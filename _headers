@@ -1,0 +1,15 @@
+# Cloudflare Pages response headers for ronna.mom.
+# Everything is served from this origin: no third-party scripts, styles,
+# fonts, images or connections. form-action 'none' keeps the waitlist form
+# inert until the CISO clears a destination; change it only on that ruling.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+  Strict-Transport-Security: max-age=31536000
+
+/assets/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
