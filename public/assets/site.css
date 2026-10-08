@@ -182,3 +182,18 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
   padding-block: 24px;
   font-family: var(--mono); font-size: 12px; color: var(--dim);
 }
+
+/* Print: browsers drop backgrounds when printing, which would leave white
+   text on white paper. Print black on white and drop what can't be used. */
+@media print {
+  :root { color-scheme: light; }
+  html, body { background: #FFFFFF; color: #000000; }
+  .skip, .nav, .btn, .notice { display: none !important; }
+  body * { color: #000000 !important; }
+  .site-head, .section, .site-foot { border-color: #999999; }
+  .card { background: none; border-color: #999999; break-inside: avoid; }
+  .field input { background: #FFFFFF; color: #000000; border-color: #000000; }
+  .hero { padding-block: 24px; }
+  .section { padding-block: 24px; }
+  h1 { font-size: 32pt; }
+}
