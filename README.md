@@ -32,8 +32,13 @@ including a strict Content-Security-Policy, are in `_headers`.
 - No real family data, no names, no product screenshots.
 - Copy marked `[COPY]` is placeholder until the CBO's text arrives through
   the CPO.
-- The company mark is not chosen yet; the header uses the text wordmark
-  RONNAOPS. Gold (`#B5964D`) is used for MOM only.
+- Company mark: A, the element tile (picked 8 Oct). `favicon.svg` is its
+  small-size cut (filled `#0B0C0E` tile, white R drawn as an outline, so it
+  needs no web font); `favicon.ico` and `apple-touch-icon.png` are rendered
+  from it. The header pairs the tile with "RonnaOps" in mixed case.
+  Gold (`#B5964D`) is used for MOM only. The one action color is white.
+- Every page is `noindex` (meta robots on each page and `X-Robots-Tag` in
+  `_headers`) until the CPO says the copy is live. Remove both together.
 
 ## Preview locally
 

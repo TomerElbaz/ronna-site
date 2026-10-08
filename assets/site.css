@@ -72,7 +72,7 @@ a:hover { color: var(--dim); }
 }
 .skip:focus { left: 8px; top: 8px; z-index: 10; }
 
-/* Header: text wordmark until the company mark is picked. */
+/* Header: mark A (the element tile, small-size cut) plus "RonnaOps" in mixed case. */
 .site-head { border-bottom: 1px solid var(--line); }
 .site-head .wrap {
   display: flex; align-items: center; justify-content: space-between;
@@ -80,10 +80,12 @@ a:hover { color: var(--dim); }
   padding-block: 18px;
 }
 .wordmark {
+  display: inline-flex; align-items: center; gap: 12px;
   font-weight: 700; font-stretch: 125%;
-  font-size: 18px; letter-spacing: .18em;
+  font-size: 20px; letter-spacing: .01em;
   text-decoration: none;
 }
+.wordmark .tile { display: block; width: 32px; height: 32px; flex: none; }
 .wordmark:hover { color: var(--ink); }
 .nav { display: flex; gap: 20px; flex-wrap: wrap; }
 .nav a {

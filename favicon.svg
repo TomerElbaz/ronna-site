@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- RonnaOps mark A, the element tile, small-size cut: filled #0B0C0E tile, white outline, white R (Archivo 700 outline). -->
+  <rect x="1.5" y="1.5" width="61" height="61" rx="3" fill="#0B0C0E" stroke="#FFFFFF" stroke-width="3"/>
+  <path fill="#FFFFFF" transform="translate(12.74 49) scale(0.04953 -0.04953)" d="M76 0V686H452Q528 686 578 659Q629 632 654 584Q679 535 679 472Q679 405 649 354Q619 302 562 275L702 0H537L416 250H225V0ZM225 368H432Q477 368 502 396Q527 423 527 470Q527 500 516 521Q505 543 484 554Q463 565 432 565H225Z"/>
+</svg>

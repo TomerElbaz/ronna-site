@@ -2,8 +2,11 @@
 # Everything is served from this origin: no third-party scripts, styles,
 # fonts, images or connections. form-action 'none' keeps the waitlist form
 # inert until the CISO clears a destination; change it only on that ruling.
+# X-Robots-Tag noindex stays until the CPO says the copy is live; the pages
+# carry meta robots noindex too, and both come off together.
 /*
   Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  X-Robots-Tag: noindex
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
