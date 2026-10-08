@@ -72,6 +72,16 @@ a:hover { color: var(--dim); }
 }
 .skip:focus { left: 8px; top: 8px; z-index: 10; }
 
+/* Text for screen readers only. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+
 /* Header: mark A (the element tile, small-size cut) plus "RonnaOps" in mixed case. */
 .site-head { border-bottom: 1px solid var(--line); }
 .site-head .wrap {
@@ -105,6 +115,7 @@ h2 { font-size: clamp(22px, 4vw, 30px); line-height: 1.15; font-weight: 600; fon
 p { margin: 0; color: var(--dim); max-width: 62ch; }
 .lede { font-size: clamp(18px, 2.4vw, 21px); }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.literal { text-transform: none; } /* code stays as typed, e.g. 1e27 */
 .mom { color: var(--mom); font-weight: 700; font-stretch: 125%; letter-spacing: .12em; }
 
 /* Placeholder copy marker, so nobody mistakes draft text for final. */
@@ -146,16 +157,23 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
 .form { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+/* Field edge uses --dim: WCAG 1.4.11 wants 3:1 for a field's boundary and
+   --line on --surface is only 1.3:1 (--dim is 7.6:1). Focus adds white. */
 .field input {
   font: inherit; color: var(--ink); background: var(--surface);
-  border: 1px solid var(--line); border-radius: 4px; padding: 12px 14px; width: 100%;
+  border: 1px solid var(--dim); border-radius: 4px; padding: 12px 14px; width: 100%;
 }
-.field input:focus { border-color: var(--dim); outline: none; }
+.field input::placeholder { color: var(--dim); opacity: 1; }
+.field input:focus-visible { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 2px; }
 .notice {
   font-family: var(--mono); font-size: 13px; color: var(--dim);
   border-left: 2px solid var(--line); padding-left: 12px;
 }
 .notice[hidden] { display: none; }
+
+.links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.links a { color: var(--dim); }
+.links a:hover { color: var(--ink); }
 
 /* Footer */
 .site-foot { border-top: 1px solid var(--line); }
