@@ -40,6 +40,13 @@ Every page except the 404 carries Open Graph and Twitter share tags with
 `[COPY]` titles and descriptions and the tile (`icon-512.png`) as the image.
 Pages stay `noindex`.
 
+Response headers are a **DRAFT FOR CISO** (issue #15): a
+Content-Security-Policy with no outside host at all (fonts are self-hosted)
+and nothing inline, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy:
+strict-origin-when-cross-origin`, and a Permissions-Policy denying camera,
+microphone and location. `/confirm/` and `/invite/`, which open from links
+that may carry a token, also set `no-referrer` in a meta tag.
+
 Shared look lives in `public/assets/site.css` (the Brand desk palette, Archivo
 and IBM Plex Mono). The fonts are self-hosted in `public/assets/fonts/` under
 the SIL Open Font License, so the site makes no third-party requests.
@@ -53,6 +60,8 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
   on the CPO's word. Pages previews are off, so a branch is checked with the
   self-test, not a preview URL.
 - No secret, key or token ever goes in this repo.
+- Outside links: none today. `ALLOWED_OUTSIDE_HOSTS` in
+  `tests/check_links.py` stays empty until the CPO approves hosts by name.
 - No form destination, analytics or third-party script without a CISO
   ruling posted in the CPO chat. The waitlist form has an empty action, its
   submit is held by `public/assets/site.js` (which clears the field), and
@@ -143,15 +152,21 @@ from `public/_headers` and serves `404.html` for unknown paths, like Pages.
 Run all three before every push:
 
 ```sh
+npm ci                             # once: installs axe-core (test-only, pinned)
 python3 tests/check_static.py      # standard library only
 python3 tests/check_links.py       # standard library only
 node tests/browser_check.mjs       # needs Node and Playwright with Chromium
 ```
 
+`npm test` runs all three. `package.json` holds test tools only; nothing in
+it is published, since Pages serves `public/` alone.
+
 `check_static.py` scans `public/` for anything pointing off-site, backend
 host names, secret-looking strings, missing noindex, lang, title, viewport or
 alt text, missing share tags or a share image other than the tile, a waitlist
-form with an action, script network calls, and lost guards in `_headers`.
+form with an action, script network calls, anything inline the CSP would block
+(inline script or style, `style=""`, `on*=""`, `javascript:`), and any drift
+from the drafted headers in `_headers`.
 
 `check_links.py` reads every link (HTML, CSS `url()`, share tags) and fails if
 an internal link does not resolve (after `_redirects`), a `#fragment` is not
@@ -169,5 +184,11 @@ confirm, resend), a waitlist submit that sends anything with or
 without JavaScript, `/waitlist/` not redirecting, or any page over the
 **150 KB budget**: every byte a first visit loads, fonts included, measured
 as served before compression, in a fresh browser each time. It prints each
-page's weight.
+page's weight. It also runs **axe-core** on every page and state (Home,
+Business, the email error, the confirm step) and fails on any serious or
+critical issue; walks the form by keyboard (email, button, Privacy, and back;
+Enter on an empty field keeps focus there and marks it invalid; Enter on a
+filled one moves focus to the confirm step, then Tab reaches "Send the link
+again") and fails on a missing focus ring or a wrong stop; and records every
+`securitypolicyviolation`, failing if the CSP blocks anything on any page.
 If Playwright is installed elsewhere, set `PLAYWRIGHT_MODULE` to its path.

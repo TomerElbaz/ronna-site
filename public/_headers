@@ -1,18 +1,33 @@
-# Cloudflare Pages response headers for ronna.mom.
-# Everything is served from this origin: no third-party scripts, styles,
-# fonts, images or connections. form-action 'none' keeps the waitlist form
-# inert until the CISO clears a destination; change it only on that ruling.
+# DRAFT FOR CISO (issue #15). Cloudflare Pages response headers for ronna.mom.
+# Not a ruling: the CISO approves or changes every line below in the CPO chat.
+#
+# Content-Security-Policy: no outside host at all. Fonts are self-hosted
+# (/assets/fonts), so none is needed for them either. Nothing inline is
+# allowed: no inline script, no inline style, no event-handler attributes.
+# form-action 'none' keeps the waitlist form inert until the CISO clears a
+# destination; frame-ancestors 'none' means no site may frame these pages.
+# A human-check widget, if approved, needs its host added to script-src and
+# frame-src here on the same ruling.
+#
+# Referrer-Policy strict-origin-when-cross-origin site-wide, as drafted.
+# /confirm/ and /invite/ may be opened from links that carry a token, so
+# those two pages also set <meta name="referrer" content="no-referrer"> to
+# send no referrer at all; the CISO decides whether that stays.
+#
+# Permissions-Policy denies camera, microphone and location (plus payment
+# and USB, which the site never uses).
+#
 # X-Robots-Tag noindex stays until the CPO says the copy is live; the pages
 # carry meta robots noindex too, and both come off together.
 /*
   Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'; upgrade-insecure-requests
-  X-Robots-Tag: noindex
-  Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   X-Frame-Options: DENY
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
   Cross-Origin-Opener-Policy: same-origin
   Strict-Transport-Security: max-age=31536000
+  X-Robots-Tag: noindex
 
 /assets/fonts/*
   Cache-Control: public, max-age=31536000, immutable

@@ -1,0 +1,11 @@
+{
+  "name": "ronna-site-tests",
+  "private": true,
+  "description": "Test-only tools for the ronna.mom self-test. Nothing here is published: Pages serves public/ only.",
+  "scripts": {
+    "test": "python3 tests/check_static.py && python3 tests/check_links.py && node tests/browser_check.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.13.0"
+  }
+}

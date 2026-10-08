@@ -19,12 +19,26 @@
 //   - the waitlist form sends anything, with or without JavaScript,
 //   - /waitlist/ does not redirect to the main page,
 //   - any page weighs more than BUDGET (150 KB) on a first visit: every byte
-//     the page loads, fonts included, as served (before any compression).
+//     the page loads, fonts included, as served (before any compression),
+//   - axe-core finds any serious or critical accessibility issue on any page,
+//     in every state (Home, Business, the email error, the confirm step),
+//   - Tab does not walk the form in order (email, button, Privacy) with a
+//     visible focus ring, or focus does not land where it should after an
+//     error or a submit,
+//   - the Content-Security-Policy in public/_headers blocks anything any page
+//     tries to load or run (a securitypolicyviolation event, in any state).
 //
-// Needs Node and Playwright with a Chromium. Run from the repo root:
+// axe-core (test-only, pinned in package.json; never in public/) is injected
+// in a separate browser context that bypasses the CSP, so the policy itself
+// is still tested everywhere else.
+//
+// Needs Node, Playwright with a Chromium, and `npm ci` for axe-core. Run from
+// the repo root:
 //   node tests/browser_check.mjs [screenshot-dir]
 // If Playwright is not resolvable from here, point PLAYWRIGHT_MODULE at it.
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -35,11 +49,15 @@ const PORT = 8787;
 const BASE = `http://127.0.0.1:${PORT}`;
 const PAGES = ['/', '/what/', '/how/', '/privacy/', '/terms/', '/confirm/', '/invite/', '/off/', '/no-such-page'];
 const BUDGET = 150 * 1024;
+const AXE = readFileSync(process.env.AXE_PATH || createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
+const AXE_FAIL = new Set(['serious', 'critical']);
 const WIDTHS = [[320, 640, 'w320'], [390, 844, 'w390'], [1280, 900, 'desktop']];
 
 const server = spawn('python3', [path.join(here, 'serve.py'), String(PORT)], { stdio: 'ignore' });
 const problems = [];
 const weights = [];
+const axeNotes = [];
+const axeRuns = [];
 const fail = (msg) => problems.push(msg);
 const visible = (page, sel) => page.locator(sel).first().isVisible();
 
@@ -74,6 +92,95 @@ try {
     if (bytes > BUDGET) fail(`${p}: weighs ${(bytes / 1024).toFixed(1)} KB, over the ${BUDGET / 1024} KB budget`);
     await ctx.close();
   }
+
+  // Accessibility (issue #14): axe-core on every page and every state.
+  {
+    const ctx = await browser.newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
+    const axeRun = async (page, label) => {
+      if (!(await page.evaluate(() => !!window.axe))) await page.addScriptTag({ content: AXE });
+      const r = await page.evaluate(() => window.axe.run(document));
+      for (const v of r.violations) {
+        const where = v.nodes.slice(0, 3).map((n) => n.target.join(' ')).join(' | ');
+        if (AXE_FAIL.has(v.impact)) fail(`axe ${label}: [${v.impact}] ${v.id}: ${v.help} at ${where}`);
+        else axeNotes.push(`${label}: [${v.impact}] ${v.id} at ${where}`);
+      }
+      for (const v of r.incomplete) if (AXE_FAIL.has(v.impact)) axeNotes.push(`${label}: needs review [${v.impact}] ${v.id}`);
+      axeRuns.push(r.passes.length);
+    };
+    for (const p of PAGES) {
+      const page = await ctx.newPage();
+      await page.goto(BASE + p, { waitUntil: 'networkidle' });
+      await axeRun(page, p);
+      if (await page.locator('label[for=aud-business]').count()) {
+        await page.click('label[for=aud-business]');
+        await axeRun(page, `${p} (Business)`);
+        await page.click('label[for=aud-home]');
+      }
+      if (await page.locator('form[data-waitlist]').count()) {
+        await page.click('form[data-waitlist] button[type=submit]');
+        await axeRun(page, `${p} (email error)`);
+        await page.fill('#waitlist-email', 'test@example.com');
+        await page.click('form[data-waitlist] button[type=submit]');
+        await page.click('[data-resend]');
+        await axeRun(page, `${p} (confirm step)`);
+      }
+      await page.close();
+    }
+    await ctx.close();
+  }
+
+  // Keyboard order and visible focus on the form (issue #14).
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const here = (page) => page.evaluate(() => {
+      const el = document.activeElement;
+      const s = getComputedStyle(el);
+      const name = el.id === 'waitlist-email' ? 'email'
+        : el.matches('form[data-waitlist] button[type=submit]') ? 'submit'
+        : el.matches('.fine a') ? 'privacy'
+        : el.matches('[data-step=confirm]') ? 'confirm-step'
+        : el.matches('[data-resend]') ? 'resend'
+        : `${el.tagName.toLowerCase()}:${(el.textContent || '').trim().slice(0, 20)}`;
+      return { name, ring: s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2 };
+    });
+    for (const p of ['/', '/what/']) {
+      const page = await ctx.newPage();
+      await page.goto(BASE + p, { waitUntil: 'networkidle' });
+      // Reach the form from the hero by keyboard alone.
+      await page.focus('.hero .btn--ghost');
+      await page.keyboard.press('Tab');
+      let at = await here(page);
+      if (at.name !== 'email') fail(`keyboard ${p}: Tab after the hero goes to ${at.name}, not the email field`);
+      const forward = ['submit', 'privacy'];
+      for (const want of forward) {
+        if (!at.ring) fail(`keyboard ${p}: no visible focus ring on ${at.name}`);
+        await page.keyboard.press('Tab');
+        at = await here(page);
+        if (at.name !== want) fail(`keyboard ${p}: Tab order in the form reaches ${at.name}, want ${want}`);
+      }
+      for (const want of ['submit', 'email']) {
+        await page.keyboard.press('Shift+Tab');
+        at = await here(page);
+        if (at.name !== want) fail(`keyboard ${p}: Shift+Tab reaches ${at.name}, want ${want}`);
+      }
+      // Submit empty with Enter: focus stays on the email field, marked invalid, error tied to it.
+      await page.keyboard.press('Enter');
+      at = await here(page);
+      const invalid = await page.getAttribute('#waitlist-email', 'aria-invalid');
+      if (at.name !== 'email' || invalid !== 'true') fail(`keyboard ${p}: after an empty submit focus is on ${at.name}, aria-invalid=${invalid}`);
+      if (!(await page.isVisible('#waitlist-error'))) fail(`keyboard ${p}: error not shown after an empty submit`);
+      // Type and submit with Enter: focus moves to the confirm step, then Tab reaches "Send the link again".
+      await page.keyboard.type('test@example.com');
+      await page.keyboard.press('Enter');
+      at = await here(page);
+      if (at.name !== 'confirm-step') fail(`keyboard ${p}: after submit focus is on ${at.name}, not the confirm step`);
+      await page.keyboard.press('Tab');
+      at = await here(page);
+      if (at.name !== 'resend' || !at.ring) fail(`keyboard ${p}: Tab from the confirm step reaches ${at.name} (ring ${at.ring}), want "Send the link again" with a ring`);
+      await page.close();
+    }
+    await ctx.close();
+  }
   for (const [width, height, tag] of WIDTHS) {
     const ctx = await browser.newContext({ viewport: { width, height } });
     for (const p of PAGES) {
@@ -88,6 +195,11 @@ try {
         fail(`${tag} ${p}: console error ${m.text()}`);
       });
 
+      // Record anything the CSP blocks (issue #15), from the first byte on.
+      await page.addInitScript(() => {
+        window.__cspBlocked = [];
+        document.addEventListener('securitypolicyviolation', (e) => window.__cspBlocked.push(`${e.effectiveDirective} blocked ${e.blockedURI || '(inline)'}`));
+      });
       const res = await page.goto(BASE + p, { waitUntil: 'networkidle' });
       if (res.status() !== (is404 ? 404 : 200)) fail(`${tag} ${p}: status ${res.status()}`);
       if (res.headers()['x-robots-tag'] !== 'noindex') fail(`${tag} ${p}: no X-Robots-Tag noindex`);
@@ -211,6 +323,8 @@ try {
         if (posts.length) fail(`${tag} ${p} no-JS waitlist: sent ${posts.join(', ')}`);
         await noJs.close();
       }
+      const blocked = await page.evaluate(() => window.__cspBlocked || []);
+      for (const b of blocked) fail(`${tag} ${p}: CSP ${b}`);
       await page.close();
     }
     await ctx.close();
@@ -228,3 +342,4 @@ if (problems.length) {
 }
 console.log(`OK: ${PAGES.length} pages at 320, 390 and 1280 px; switch, steps and redirect work; nothing left the site`);
 console.log(`Weights (budget ${BUDGET / 1024} KB): ${weights.join(', ')}`);
+console.log(`axe-core: ${axeRuns.length} page states, no serious or critical issues${axeNotes.length ? '; notes: ' + axeNotes.join('; ') : ''}`);
