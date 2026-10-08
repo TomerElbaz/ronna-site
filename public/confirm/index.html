@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Accept invite · RonnaOps</title>
+  <title>You're on the list · RonnaOps</title>
+  <!-- [COPY] description pending from the CBO via the CPO -->
+  <meta name="description" content="Waitlist confirmation. Placeholder description.">
   <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
   <meta name="robots" content="noindex">
   <meta name="referrer" content="no-referrer">
@@ -30,16 +32,24 @@
   </header>
 
   <!--
-    PLACEHOLDER. This page does not read the URL, accept a code, call any
-    service or store anything. The real invite flow is defined by the CPO
-    and cleared by the CISO before any of that is added here.
+    CONFIRM-EMAIL LANDING (CPO order, 8 Oct, issue #8). The page a double
+    opt-in link opens. Static: it reads nothing from the URL (no token is
+    parsed, stored or sent), runs no script and calls no service. The place
+    number is a placeholder. When the list goes live, confirming the token is
+    the job of whatever service the CISO clears, not of this page.
+    Referrer-Policy no-referrer (/_headers) keeps any token in the link from
+    leaking through the "Back to home" link; /confirm/* is no-store.
   -->
   <main id="main">
-    <section class="hero">
+    <section class="hero hero--full">
       <div class="wrap stack">
-        <p class="eyebrow"><span class="mom">MOM</span> invite</p>
-        <h1>Invite headline. <span class="copy-tag">[COPY]</span></h1>
-        <p class="lede">[COPY] Invites are not open yet. Placeholder until the invite flow is approved.</p>
+        <p class="eyebrow"><span class="mom">MOM</span> waitlist</p>
+        <h1>You're on the list</h1>
+        <p class="place-num" aria-label="Place on the list: placeholder">#[COPY]</p>
+        <p class="lede">[COPY] One line on what happens next.</p>
+        <p class="pending">[pending Tomer] Referral line.</p>
+        <!-- Preview note stays until the list is live, so nobody is told they were confirmed when they were not. -->
+        <p class="notice">[COPY] Preview: the list is not open yet, so nothing was confirmed.</p>
         <a class="btn" href="/">Back to home</a>
       </div>
     </section>

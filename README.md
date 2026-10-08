@@ -12,6 +12,9 @@ framework and no build step. Only `public/` is published; this README,
 |------------|----------------------------|--------------------------------------------------------------|
 | `/`        | `public/index.html`        | The waitlist is the main page (UX design, 12:58 CT 8 Oct). Form **not connected**. |
 | `/what/`   | `public/what/index.html`   | "What MOM is" in the main page's blocks, Home and Business. `[COPY]`. |
+| `/how/`    | `public/how/index.html`    | How it works: three steps (Tell MOM, MOM files it, You say Go), Home and Business. `[COPY]`. |
+| `/privacy/`| `public/privacy/index.html`| Privacy skeleton, **for CISO review**: what we collect (email only), why, how to leave, never. `[COPY]`. |
+| `/confirm/`| `public/confirm/index.html`| Confirm-email landing a double opt-in link opens: "You're on the list", place placeholder. Static; reads nothing from the URL; `no-store`. |
 | `/invite/` | `public/invite/index.html` | Invite-accept placeholder. Does nothing.                     |
 | `/off/`    | `public/off/index.html`    | "Take me off the list" placeholder. No form yet.             |
 | 404        | `public/404.html`          | `1e27`, large, over "Page not found." Served for unknown paths. |
@@ -22,13 +25,15 @@ The main page, top to bottom: a Home | Business switch in the header, a
 full-width hero (white "Put us on the list", outlined "How it works"), three
 facts, a box shelf of four cards with labelled placeholder images, the form
 (email, a human-check slot, white button), a "never" list with white dashes,
-a keeper line, and a footer with the 10<sup>27</sup> line and "Take me off
-the list". The switch is CSS only (radio plus `:has`): blocks marked
+a keeper line, and a footer with the 10<sup>27</sup> line and links to
+What MOM is, How it works, Privacy and "Take me off the list". The hero's
+"How it works" button opens `/how/`. The switch is CSS only (radio plus `:has`): blocks marked
 `data-aud="home"` or `data-aud="business"` show for the checked side, so it
 works without JavaScript. After submit, the page shows the confirm step
 ("Check your email." and "Send the link again"); the place-on-the-list step
-shows at `/#on-the-list`, where the confirm link will land. Until the form
-is connected both steps carry a preview note saying nothing was sent.
+also shows in-page at `/#on-the-list`; the confirm email's link itself opens
+`/confirm/`. Until the form is connected these carry a preview note saying
+nothing was sent or confirmed.
 
 Shared look lives in `public/assets/site.css` (the Brand desk palette, Archivo
 and IBM Plex Mono). The fonts are self-hosted in `public/assets/fonts/` under
@@ -44,8 +49,10 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
 - No form destination, analytics or third-party script without a CISO
   ruling posted in the CPO chat. The waitlist form has an empty action, its
   submit is held by `public/assets/site.js` (which clears the field), and
-  the CSP sets `form-action 'none'`. The human-check slot stays empty until
-  the CISO picks a check.
+  the CSP sets `form-action 'none'`. The human-check slot is sized for
+  Cloudflare Turnstile (300 x 65, or 150 x 140 under 332 px) and stays an
+  empty box: no script, no key, no request until the CISO rules, and the CSP
+  would block the widget until that ruling opens it.
 - Nothing here points at the MOM product's backend or any of its hosts.
 - No real family data, no names, no product screenshots.
 - Copy marked `[COPY]` is placeholder until the CBO's text arrives through

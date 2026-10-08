@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How it works · RonnaOps</title>
+  <!-- [COPY] description pending from the CBO via the CPO -->
+  <meta name="description" content="How MOM works. Placeholder description.">
+  <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#171A20">
+  <link rel="preload" href="/assets/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="stylesheet" href="/assets/site.css">
+</head>
+<body>
+  <!--
+    How it works (CPO order, 8 Oct, issue #6). Opened by the hero's second
+    button on / and /what/. Three steps, titles from the CPO's order; the
+    text under each is [COPY], with Home and Business variants swapped by
+    the same CSS-only switch as the main page.
+  -->
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-head">
+    <div class="wrap">
+      <a class="wordmark" href="/" aria-label="RonnaOps home"><img class="tile" src="/favicon.svg" alt="" width="32" height="32"><span>RonnaOps</span></a>
+      <fieldset class="switch">
+        <legend class="sr-only">Show this page for</legend>
+        <input type="radio" name="audience" id="aud-home" value="home" checked>
+        <label for="aud-home">Home</label>
+        <input type="radio" name="audience" id="aud-business" value="business">
+        <label for="aud-business">Business</label>
+      </fieldset>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap stack">
+        <p class="eyebrow">How <span class="mom">MOM</span> works</p>
+        <h1 id="hero-title">
+          <span data-aud="home">How it works at home. <span class="copy-tag">[COPY]</span></span>
+          <span data-aud="business">How it works at work. <span class="copy-tag">[COPY]</span></span>
+        </h1>
+        <p class="lede" data-aud="home">[COPY] One line on the three steps, for a household.</p>
+        <p class="lede" data-aud="business">[COPY] One line on the three steps, for a business.</p>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="steps-title">
+      <div class="wrap stack">
+        <h2 id="steps-title" class="sr-only">Three steps</h2>
+        <ol class="how-steps">
+          <li class="how-step">
+            <span class="how-num" aria-hidden="true">01</span>
+            <h3><span class="sr-only">Step 1: </span>Tell MOM</h3>
+            <p data-aud="home">[COPY] What this step means at home.</p>
+            <p data-aud="business">[COPY] What this step means at work.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-num" aria-hidden="true">02</span>
+            <h3><span class="sr-only">Step 2: </span>MOM files it</h3>
+            <p data-aud="home">[COPY] What this step means at home.</p>
+            <p data-aud="business">[COPY] What this step means at work.</p>
+          </li>
+          <li class="how-step">
+            <span class="how-num" aria-hidden="true">03</span>
+            <h3><span class="sr-only">Step 3: </span>You say Go</h3>
+            <p data-aud="home">[COPY] What this step means at home.</p>
+            <p data-aud="business">[COPY] What this step means at work.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap stack">
+        <h2>
+          <span data-aud="home">Closing line <span class="copy-tag">[COPY]</span></span>
+          <span data-aud="business">Closing line <span class="copy-tag">[COPY]</span></span>
+        </h2>
+        <a class="btn" href="/#join">Put us on the list</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <p class="ten27"><span class="num" aria-hidden="true">10<sup>27</sup></span><span class="sr-only">10 to the 27th</span> [COPY] One line on what ronna means.</p>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="/off/">Take me off the list</a>
+      </nav>
+      <span>RonnaOps</span>
+    </div>
+  </footer>
+</body>
+</html>

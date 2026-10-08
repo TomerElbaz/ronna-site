@@ -11,6 +11,9 @@
 //     on the main page and on /what/,
 //   - the 404 page loses its large 1e27 and the "Page not found." line,
 //   - any icon in the set is missing,
+//   - /how/ loses its three steps or its switch, /privacy/ its CISO mark or
+//     sections, /confirm/ its heading, place placeholder or no-store, or runs a script,
+//   - the human-check slot is not Turnstile-sized (300x65, 150x140 under 332 px),
 //   - the waitlist steps misbehave (empty email, confirm, resend, place),
 //   - the waitlist form sends anything, with or without JavaScript,
 //   - /waitlist/ does not redirect to the main page.
@@ -27,7 +30,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const shots = process.argv[2];
 const PORT = 8787;
 const BASE = `http://127.0.0.1:${PORT}`;
-const PAGES = ['/', '/what/', '/invite/', '/off/', '/no-such-page'];
+const PAGES = ['/', '/what/', '/how/', '/privacy/', '/confirm/', '/invite/', '/off/', '/no-such-page'];
 const WIDTHS = [[320, 640, 'w320'], [390, 844, 'w390'], [1280, 900, 'desktop']];
 
 const server = spawn('python3', [path.join(here, 'serve.py'), String(PORT)], { stdio: 'ignore' });
@@ -110,6 +113,26 @@ try {
 
       if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_') || '_'}.png`), fullPage: true });
 
+      if (p === '/how/') {
+        const titles = (await page.locator('.how-step h3').allTextContents()).map((t) => t.replace('Step 1: ', '').replace('Step 2: ', '').replace('Step 3: ', '').trim());
+        if (titles.join('|') !== 'Tell MOM|MOM files it|You say Go') fail(`${tag} /how/: steps are ${titles.join(' | ')}`);
+        if (!(await visible(page, '.how-step [data-aud=home]')) || (await visible(page, '.how-step [data-aud=business]'))) fail(`${tag} /how/: Home copy not the default`);
+        await page.click('label[for=aud-business]');
+        if (!(await visible(page, '.how-step [data-aud=business]')) || (await visible(page, '.how-step [data-aud=home]'))) fail(`${tag} /how/: switch does not swap the steps`);
+        await fit(' (Business)');
+      }
+      if (p === '/privacy/') {
+        if (!(await visible(page, '.review'))) fail(`${tag} /privacy/: CISO review mark missing`);
+        const heads = (await page.locator('main h2').allTextContents()).map((t) => t.trim());
+        if (heads.join('|') !== 'What we collect|Why|How to leave the list|Never') fail(`${tag} /privacy/: sections are ${heads.join(' | ')}`);
+      }
+      if (p === '/confirm/') {
+        if ((await page.locator('h1').textContent()).trim() !== "You're on the list") fail(`${tag} /confirm/: heading wrong`);
+        if (!(await visible(page, '.place-num'))) fail(`${tag} /confirm/: place number placeholder missing`);
+        if (await page.locator('script').count()) fail(`${tag} /confirm/: page runs a script`);
+        if (res.headers()['cache-control'] !== 'no-store') fail(`${tag} /confirm/: not no-store`);
+      }
+
       if (is404) {
         if ((await page.locator('.egg').textContent()).trim() !== '1e27') fail(`${tag} 404: 1e27 missing`);
         if ((await page.locator('h1').textContent()).trim() !== 'Page not found.') fail(`${tag} 404: line under 1e27 is not "Page not found."`);
@@ -118,6 +141,10 @@ try {
       }
 
       if (p === '/' || p === '/what/') {
+        if ((await page.getAttribute('.hero .btn--ghost', 'href')) !== '/how/') fail(`${tag} ${p}: "How it works" does not open /how/`);
+        const slot = await page.locator('[data-slot=human-check]').boundingBox();
+        const want = width < 332 ? [150, 140] : [300, 65];
+        if (!slot || Math.round(slot.width) !== want[0] || Math.round(slot.height) !== want[1]) fail(`${tag} ${p}: human-check slot is ${slot && Math.round(slot.width)}x${slot && Math.round(slot.height)}, want ${want.join('x')}`);
         // Switch: Home copy by default, Business copy after the switch.
         if (!(await visible(page, 'h1 [data-aud=home]')) || (await visible(page, 'h1 [data-aud=business]'))) fail(`${tag} switch: Home copy not the default`);
         await page.click('label[for=aud-business]');

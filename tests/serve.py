@@ -21,10 +21,16 @@ def site_headers():
         if not line[0].isspace():
             block = line.strip()
             continue
-        if block == "/*":
-            name, value = line.strip().split(":", 1)
-            out.append((name, value.strip()))
+        name, value = line.strip().split(":", 1)
+        out.append((block, name, value.strip()))
     return out
+
+
+def headers_for(path):
+    # Pages matching: "/*" covers everything; "/x/*" covers /x/ and below.
+    for block, name, value in HEADERS:
+        if block == "/*" or (block.endswith("/*") and path.startswith(block[:-1])):
+            yield name, value
 
 
 HEADERS = site_headers()
@@ -49,7 +55,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=ROOT, **kwargs)
 
     def end_headers(self):
-        for name, value in HEADERS:
+        for name, value in headers_for(self.path.split("?", 1)[0]):
             if name == "Strict-Transport-Security":
                 continue  # plain http locally
             if name == "Content-Security-Policy":

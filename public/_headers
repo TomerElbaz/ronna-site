@@ -16,3 +16,7 @@
 
 /assets/fonts/*
   Cache-Control: public, max-age=31536000, immutable
+
+# The confirm landing may be opened with a token in its link: never store it.
+/confirm/*
+  Cache-Control: no-store

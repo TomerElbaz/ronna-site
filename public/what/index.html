@@ -55,7 +55,7 @@
         <p class="pending" data-aud="business">[pending Tomer] Business price line.</p>
         <div class="actions">
           <a class="btn" href="#join">Put us on the list</a>
-          <a class="btn btn--ghost" href="#how">How it works</a>
+          <a class="btn btn--ghost" href="/how/">How it works</a>
         </div>
       </div>
     </section>
@@ -78,7 +78,7 @@
     </section>
 
     <!-- 3. Box shelf: four cards with labelled placeholder images (no product photos yet) -->
-    <section class="section" id="how" aria-labelledby="shelf-title">
+    <section class="section" aria-labelledby="shelf-title">
       <div class="wrap stack">
         <h2 id="shelf-title">
           <span data-aud="home">How it works at home <span class="copy-tag">[COPY]</span></span>
@@ -135,11 +135,20 @@
               <label for="waitlist-email">Email</label>
               <input id="waitlist-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="waitlist-error">
             </div>
-            <!-- Human-check slot: empty until the CISO picks a check. -->
-            <div class="slot" data-slot="human-check">Human check · slot · not connected</div>
+            <!--
+              Human-check slot, sized for Cloudflare Turnstile: 300 x 65 px
+              (the widget's "normal" size), dropping to 150 x 140 px ("compact")
+              where the column is narrower than 300 px, i.e. phones under 332 px.
+              NOTHING LOADS HERE. No Turnstile script, no site key, no request:
+              the slot is an empty box until the CISO rules in the CPO chat. That
+              ruling also has to open the CSP in /_headers (script-src and
+              frame-src for challenges.cloudflare.com); until then the CSP blocks
+              the widget even if someone pastes it in.
+            -->
+            <div class="slot" data-slot="human-check" data-size="normal" role="img" aria-label="Human check: not connected">Human check · not connected</div>
             <button class="btn" type="submit">Put us on the list</button>
             <p class="notice" id="waitlist-error" role="alert" hidden>[COPY] Enter an email address.</p>
-            <p class="fine">[COPY] Fine print on what we keep and why.</p>
+            <p class="fine">[COPY] Fine print on what we keep and why. <a href="/privacy/">Privacy</a></p>
           </form>
         </div>
 
@@ -189,6 +198,8 @@
       <p class="ten27"><span class="num" aria-hidden="true">10<sup>27</sup></span><span class="sr-only">10 to the 27th</span> [COPY] One line on what ronna means.</p>
       <nav class="foot-links" aria-label="Footer">
         <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/privacy/">Privacy</a>
         <a href="/off/">Take me off the list</a>
       </nav>
       <span>RonnaOps</span>
