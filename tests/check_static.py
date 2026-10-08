@@ -2,14 +2,19 @@
 """Static self-test for the ronna.mom site in public/. Standard library only.
 
 Fails if anything in the published tree:
-  - points at another origin (only same-site paths are allowed),
+  - points at another origin (only same-site paths, or absolute URLs on our
+    own host for share tags, are allowed),
   - mentions the MOM product's backend hosts,
   - looks like a secret, key or token,
   - lacks noindex, a language, a title or a viewport,
   - has an image without alt, or a page without exactly one h1,
-  - links to a page or asset that does not exist,
+  - (except 404.html) lacks its Open Graph / Twitter share tags, or shares an
+    image other than the tile (icon-512.png),
   - gives the waitlist form an action or a network call,
   - drops the guards in _headers (CSP form-action 'none', X-Robots-Tag noindex).
+
+Links (internal resolution, anchors, outside hosts) are checked by
+tests/check_links.py.
 
 Run from the repo root:  python3 tests/check_static.py
 """
@@ -24,6 +29,8 @@ TEXT_EXT = {".html", ".css", ".js", ".svg", ".txt", ""}
 
 # The only absolute URL allowed: the SVG namespace, which is an identifier and never fetched.
 ALLOWED_URLS = {"http://www.w3.org/2000/svg"}
+# Our own host, for the absolute URLs that Open Graph / Twitter tags require.
+OWN_ORIGIN = "https://ronna.mom/"
 URL_RE = re.compile(r"""(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[^\s"'<>)]*""")
 BACKEND_RE = re.compile(r"workers\.dev|\bworker\b", re.I)
 SECRET_RE = re.compile(
@@ -46,9 +53,9 @@ class Page(HTMLParser):
         self.title = False
         self.viewport = False
         self.robots = None
+        self.share = {}
         self.h1 = 0
         self.imgs_without_alt = 0
-        self.refs = []
         self.forms = []
         self._in_title = False
 
@@ -62,15 +69,14 @@ class Page(HTMLParser):
             self.viewport = True
         elif tag == "meta" and a.get("name") == "robots":
             self.robots = a.get("content")
+        elif tag == "meta" and (a.get("property", "").startswith("og:") or a.get("name", "").startswith("twitter:")):
+            self.share[a.get("property") or a.get("name")] = a.get("content", "")
         elif tag == "h1":
             self.h1 += 1
         elif tag == "img" and "alt" not in a:
             self.imgs_without_alt += 1
         if tag == "form":
             self.forms.append(a)
-        for key in ("href", "src", "action"):
-            if key in a and a[key]:
-                self.refs.append(a[key])
 
     def handle_data(self, data):
         if self._in_title and data.strip():
@@ -79,19 +85,6 @@ class Page(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "title":
             self._in_title = False
-
-
-def resolve(ref, page_path):
-    ref = ref.split("#", 1)[0].split("?", 1)[0]
-    if not ref or re.match(r"^([a-z][a-z0-9+.-]*:|//)", ref, re.I):
-        return None  # empty, or another origin (reported above as off-site)
-    if ref.startswith("/"):
-        target = os.path.join(ROOT, ref.lstrip("/"))
-    else:
-        target = os.path.join(os.path.dirname(page_path), ref)
-    if ref.endswith("/"):
-        target = os.path.join(target, "index.html")
-    return os.path.normpath(target)
 
 
 def main():
@@ -109,7 +102,7 @@ def main():
         if not is_license:
             for m in URL_RE.finditer(text):
                 url = m.group(0).rstrip(".,;")
-                if url not in ALLOWED_URLS:
+                if url not in ALLOWED_URLS and not url.startswith(OWN_ORIGIN):
                     problems.append(f"{rel(path)}: points off-site: {url}")
         if BACKEND_RE.search(text):
             problems.append(f"{rel(path)}: mentions a backend host")
@@ -133,13 +126,16 @@ def main():
                 problems.append(f"{rel(path)}: {p.h1} <h1> elements, want 1")
             if p.imgs_without_alt:
                 problems.append(f"{rel(path)}: {p.imgs_without_alt} <img> without alt")
+            if rel(path) != "404.html":
+                for key in ("og:title", "og:description", "og:url", "og:image", "twitter:card", "twitter:title", "twitter:description", "twitter:image"):
+                    if not p.share.get(key):
+                        problems.append(f"{rel(path)}: share tag {key} missing")
+                for key in ("og:image", "twitter:image"):
+                    if p.share.get(key) and p.share[key] != OWN_ORIGIN + "icon-512.png":
+                        problems.append(f"{rel(path)}: {key} is {p.share[key]}, want the tile {OWN_ORIGIN}icon-512.png")
             for form in p.forms:
                 if form.get("action", "") != "":
                     problems.append(f"{rel(path)}: form has an action ({form.get('action')}) without a CISO ruling")
-            for ref in p.refs:
-                target = resolve(ref, path)
-                if target and not os.path.exists(target):
-                    problems.append(f"{rel(path)}: broken link {ref}")
 
     headers = open(os.path.join(ROOT, "_headers"), encoding="utf-8").read()
     if "form-action 'none'" not in headers:

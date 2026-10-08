@@ -14,6 +14,7 @@ framework and no build step. Only `public/` is published; this README,
 | `/what/`   | `public/what/index.html`   | "What MOM is" in the main page's blocks, Home and Business. `[COPY]`. |
 | `/how/`    | `public/how/index.html`    | How it works: three steps (Tell MOM, MOM files it, You say Go), Home and Business. `[COPY]`. |
 | `/privacy/`| `public/privacy/index.html`| Privacy skeleton, **for CISO review**: what we collect (email only), why, how to leave, never. `[COPY]`. |
+| `/terms/`  | `public/terms/index.html`  | Terms skeleton, **for counsel review**: who we are, the waitlist, leaving, changes, governing law, contact. `[COPY]`. |
 | `/confirm/`| `public/confirm/index.html`| Confirm-email landing a double opt-in link opens: "You're on the list", place placeholder. Static; reads nothing from the URL; `no-store`. |
 | `/invite/` | `public/invite/index.html` | Invite-accept placeholder. Does nothing.                     |
 | `/off/`    | `public/off/index.html`    | "Take me off the list" placeholder. No form yet.             |
@@ -30,14 +31,20 @@ What MOM is, How it works, Privacy and "Take me off the list". The hero's
 "How it works" button opens `/how/`. The switch is CSS only (radio plus `:has`): blocks marked
 `data-aud="home"` or `data-aud="business"` show for the checked side, so it
 works without JavaScript. After submit, the page shows the confirm step
-("Check your email." and "Send the link again"); the place-on-the-list step
-also shows in-page at `/#on-the-list`; the confirm email's link itself opens
-`/confirm/`. Until the form is connected these carry a preview note saying
-nothing was sent or confirmed.
+("Check your email." and "Send the link again"). The place on the list is
+its own page, `/confirm/`, which the confirm email's link opens; there is no
+in-page place step. Until the form is connected both carry a preview note
+saying nothing was sent or confirmed.
+
+Every page except the 404 carries Open Graph and Twitter share tags with
+`[COPY]` titles and descriptions and the tile (`icon-512.png`) as the image.
+Pages stay `noindex`.
 
 Shared look lives in `public/assets/site.css` (the Brand desk palette, Archivo
 and IBM Plex Mono). The fonts are self-hosted in `public/assets/fonts/` under
-the SIL Open Font License, so the site makes no third-party requests. Response
+the SIL Open Font License, so the site makes no third-party requests.
+Archivo is trimmed to the weights (400-700) and widths (100-125%) the site
+uses, to stay inside the page-weight budget; see `tools/trim_font.py`. Response
 headers, including a strict Content-Security-Policy, are in `public/_headers`.
 
 ## Rules
@@ -133,22 +140,34 @@ from `public/_headers` and serves `404.html` for unknown paths, like Pages.
 
 ## Self-test
 
-Run both before every push:
+Run all three before every push:
 
 ```sh
 python3 tests/check_static.py      # standard library only
+python3 tests/check_links.py       # standard library only
 node tests/browser_check.mjs       # needs Node and Playwright with Chromium
 ```
 
 `check_static.py` scans `public/` for anything pointing off-site, backend
 host names, secret-looking strings, missing noindex, lang, title, viewport or
-alt text, broken links, a waitlist form with an action, script network calls,
-and lost guards in `_headers`.
+alt text, missing share tags or a share image other than the tile, a waitlist
+form with an action, script network calls, and lost guards in `_headers`.
+
+`check_links.py` reads every link (HTML, CSS `url()`, share tags) and fails if
+an internal link does not resolve (after `_redirects`), a `#fragment` is not
+on its target page, a link goes to any outside host (the allowlist in the
+script is empty today; the footer will need two hosts later, added on the
+CPO's word), a link uses `mailto:`, `tel:`, `javascript:` or `data:`, or a
+page is linked from nowhere (except the 404, `/confirm/` and `/invite/`,
+which are reached from outside).
 
 `browser_check.mjs` loads every page at 320, 390 and 1280 px with the real
 headers and redirects, and fails on any off-site request, console error,
 missing font or tile, sideways scroll or cut-off text, invisible keyboard
 focus, a switch that does not swap the copy, a broken step (empty email,
-confirm, resend, place), a waitlist submit that sends anything with or
-without JavaScript, or `/waitlist/` not redirecting.
+confirm, resend), a waitlist submit that sends anything with or
+without JavaScript, `/waitlist/` not redirecting, or any page over the
+**150 KB budget**: every byte a first visit loads, fonts included, measured
+as served before compression, in a fresh browser each time. It prints each
+page's weight.
 If Playwright is installed elsewhere, set `PLAYWRIGHT_MODULE` to its path.

@@ -7,9 +7,8 @@
 // Content-Security-Policy in /_headers (form-action 'none') blocks the
 // submit in the browser as a second guard.
 //
-// The place-on-the-list step shows when the page is opened at
-// /#on-the-list, which is where the confirm link will land once the list
-// is live.
+// The place on the list is its own page, /confirm/, where the confirm
+// email's link lands. This script never runs there.
 (function () {
   var join = document.querySelector("[data-join]");
   if (!join) return;
@@ -22,7 +21,6 @@
   });
 
   function show(name) {
-    if (!steps[name]) return; // the place step lives on the main page only
     Object.keys(steps).forEach(function (key) {
       steps[key].hidden = key !== name;
     });
@@ -52,10 +50,4 @@
       resent.hidden = false;
     });
   }
-
-  function fromHash() {
-    if (location.hash === "#on-the-list") show("place");
-  }
-  window.addEventListener("hashchange", fromHash);
-  fromHash();
 })();

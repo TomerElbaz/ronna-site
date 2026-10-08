@@ -8,6 +8,22 @@
   <meta name="description" content="MOM by RonnaOps. Placeholder description.">
   <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
   <meta name="robots" content="noindex">
+  <!-- Share tags (CPO order, issue #13). Title and description are [COPY]; the image is mark A's tile. Pages stay noindex. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="RonnaOps">
+  <meta property="og:title" content="[COPY] MOM by RonnaOps">
+  <meta property="og:description" content="[COPY] Share description for MOM by RonnaOps.">
+  <meta property="og:url" content="https://ronna.mom/">
+  <meta property="og:image" content="https://ronna.mom/icon-512.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="RonnaOps mark: a square tile with the letter R">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="[COPY] MOM by RonnaOps">
+  <meta name="twitter:description" content="[COPY] Share description for MOM by RonnaOps.">
+  <meta name="twitter:image" content="https://ronna.mom/icon-512.png">
+  <meta name="twitter:image:alt" content="RonnaOps mark: a square tile with the letter R">
   <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#171A20">
   <link rel="preload" href="/assets/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
@@ -108,7 +124,7 @@
       </div>
     </section>
 
-    <!-- 4. The form, then the confirm step and the place-on-the-list step -->
+    <!-- 4. The form, then the in-page confirm step. The place on the list is /confirm/, where the email's link lands. -->
     <section class="section join" id="join" aria-labelledby="join-title" data-join>
       <div class="wrap">
         <div class="step stack" data-step="form">
@@ -159,14 +175,6 @@
           <button class="btn btn--ghost" type="button" data-resend>Send the link again</button>
           <p class="notice" data-resent role="status" hidden>[COPY] Preview: nothing was sent.</p>
         </div>
-
-        <!-- Place on the list: where the confirm link will land (/#on-the-list). -->
-        <div class="step stack" data-step="place" id="on-the-list" tabindex="-1" hidden>
-          <h2>Place heading <span class="copy-tag">[COPY]</span></h2>
-          <p class="place-num" aria-label="Place on the list: placeholder">#[COPY]</p>
-          <p>[COPY] One line on what happens next.</p>
-          <p class="pending">[pending Tomer] Referral line.</p>
-        </div>
       </div>
     </section>
 
@@ -206,6 +214,7 @@
         <a href="/what/">What MOM is</a>
         <a href="/how/">How it works</a>
         <a href="/privacy/">Privacy</a>
+        <a href="/terms/">Terms</a>
         <a href="/off/">Take me off the list</a>
       </nav>
       <span>RonnaOps</span>

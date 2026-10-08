@@ -14,9 +14,12 @@
 //   - /how/ loses its three steps or its switch, /privacy/ its CISO mark or
 //     sections, /confirm/ its heading, place placeholder or no-store, or runs a script,
 //   - the human-check slot is not Turnstile-sized (300x65, 150x140 under 332 px),
-//   - the waitlist steps misbehave (empty email, confirm, resend, place),
+//   - the waitlist steps misbehave (empty email, confirm, resend), or an
+//     in-page place step comes back (the place is /confirm/ only),
 //   - the waitlist form sends anything, with or without JavaScript,
-//   - /waitlist/ does not redirect to the main page.
+//   - /waitlist/ does not redirect to the main page,
+//   - any page weighs more than BUDGET (150 KB) on a first visit: every byte
+//     the page loads, fonts included, as served (before any compression).
 //
 // Needs Node and Playwright with a Chromium. Run from the repo root:
 //   node tests/browser_check.mjs [screenshot-dir]
@@ -30,11 +33,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const shots = process.argv[2];
 const PORT = 8787;
 const BASE = `http://127.0.0.1:${PORT}`;
-const PAGES = ['/', '/what/', '/how/', '/privacy/', '/confirm/', '/invite/', '/off/', '/no-such-page'];
+const PAGES = ['/', '/what/', '/how/', '/privacy/', '/terms/', '/confirm/', '/invite/', '/off/', '/no-such-page'];
+const BUDGET = 150 * 1024;
 const WIDTHS = [[320, 640, 'w320'], [390, 844, 'w390'], [1280, 900, 'desktop']];
 
 const server = spawn('python3', [path.join(here, 'serve.py'), String(PORT)], { stdio: 'ignore' });
 const problems = [];
+const weights = [];
 const fail = (msg) => problems.push(msg);
 const visible = (page, sel) => page.locator(sel).first().isVisible();
 
@@ -54,6 +59,21 @@ try {
   }
 
   const browser = await chromium.launch();
+
+  // Page-weight budget: a fresh context per page, so nothing is cached.
+  for (const p of PAGES) {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    const bodies = [];
+    page.on('response', (r) => bodies.push(r.body().then((b) => b.length, () => 0)));
+    await page.goto(BASE + p, { waitUntil: 'networkidle' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(100);
+    const bytes = (await Promise.all(bodies)).reduce((a, n) => a + n, 0);
+    weights.push(`${p} ${(bytes / 1024).toFixed(1)} KB`);
+    if (bytes > BUDGET) fail(`${p}: weighs ${(bytes / 1024).toFixed(1)} KB, over the ${BUDGET / 1024} KB budget`);
+    await ctx.close();
+  }
   for (const [width, height, tag] of WIDTHS) {
     const ctx = await browser.newContext({ viewport: { width, height } });
     for (const p of PAGES) {
@@ -174,13 +194,8 @@ try {
         if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_')}confirm.png`), fullPage: false });
         if (page.url() !== before || sent.length) fail(`${tag} waitlist: something was sent: ${sent.join(', ') || page.url()}`);
 
-        if (p === '/') {
-          await page.goto(BASE + '/#on-the-list', { waitUntil: 'networkidle' });
-          await page.reload({ waitUntil: 'networkidle' });
-          if (!(await visible(page, '[data-step=place]')) || (await visible(page, '[data-step=form]'))) fail(`${tag} waitlist: place step not shown at /#on-the-list`);
-          await fit(' (place)');
-          if (shots) await page.screenshot({ path: path.join(shots, `${tag}_place.png`), fullPage: false });
-        }
+        // The place on the list is /confirm/ only (CPO, issue #8).
+        if (await page.locator('[data-step=place], #on-the-list').count()) fail(`${tag} ${p}: in-page place step should be gone`);
 
         // Without JS: the switch still works (CSS only) and the form sends nothing.
         const noJs = await browser.newContext({ javaScriptEnabled: false, viewport: { width, height } });
@@ -207,7 +222,9 @@ try {
 
 if (problems.length) {
   console.log('FAIL');
+  console.log('  weights: ' + weights.join(', '));
   for (const p of problems) console.log('  ' + p);
   process.exit(1);
 }
 console.log(`OK: ${PAGES.length} pages at 320, 390 and 1280 px; switch, steps and redirect work; nothing left the site`);
+console.log(`Weights (budget ${BUDGET / 1024} KB): ${weights.join(', ')}`);

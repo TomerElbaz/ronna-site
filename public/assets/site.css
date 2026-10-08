@@ -7,8 +7,8 @@
   font-family: "Archivo";
   font-style: normal;
   font-display: swap;
-  font-weight: 100 900;
-  font-stretch: 62% 125%;
+  font-weight: 400 700;   /* trimmed to the range the site uses (issue #12) */
+  font-stretch: 100% 125%;
   src: url(/assets/fonts/archivo-latin-wdth-normal.woff2) format("woff2-variations"),
        url(/assets/fonts/archivo-latin-wdth-normal.woff2) format("woff2");
 }
