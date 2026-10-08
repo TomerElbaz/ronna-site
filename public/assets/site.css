@@ -179,10 +179,6 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
 }
 .notice[hidden] { display: none; }
 
-.links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
-.links a { color: var(--dim); }
-.links a:hover { color: var(--ink); }
-
 /* ---- Waitlist main page (UX design, 12:58 CT) ---- */
 
 /* Home | Business switch. CSS only: the checked radio shows its copy. */
@@ -260,6 +256,14 @@ body:has(#aud-business:checked) [data-aud="home"] { display: none !important; }
 .foot-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .foot-links a { color: var(--dim); }
 .foot-links a:hover { color: var(--ink); }
+
+/* 404: the 1e27 easter egg, large, with one line under it. */
+.egg {
+  font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums;
+  font-size: clamp(96px, 26vw, 288px); line-height: .9; letter-spacing: -.02em;
+  color: var(--ink); margin: 0; max-width: none;
+}
+.egg-line { font-size: clamp(20px, 3vw, 28px); font-weight: 600; font-stretch: 112%; letter-spacing: .01em; }
 
 /* Footer */
 .site-foot { border-top: 1px solid var(--line); }

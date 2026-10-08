@@ -13,51 +13,185 @@
   <link rel="preload" href="/assets/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="icon" href="/favicon.ico" sizes="48x48">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" href="/icon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/icon-180.png">
   <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
 </head>
 <body>
+  <!--
+    "What MOM is", in the same blocks as the main page (CPO order, 8 Oct):
+    hero, three facts, shelf of four cards, form, never list, keeper line,
+    footer. The Home | Business switch works the same way (CSS only). The
+    form here is the same inert form; the place-on-the-list step lives on
+    the main page only.
+  -->
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-head">
     <div class="wrap">
       <a class="wordmark" href="/" aria-label="RonnaOps home"><img class="tile" src="/favicon.svg" alt="" width="32" height="32"><span>RonnaOps</span></a>
-      <nav class="nav" aria-label="Main">
-        <a href="/what/" aria-current="page">What MOM is</a>
-        <a href="/#join">Waitlist</a>
-      </nav>
+      <fieldset class="switch">
+        <legend class="sr-only">Show this page for</legend>
+        <input type="radio" name="audience" id="aud-home" value="home" checked>
+        <label for="aud-home">Home</label>
+        <input type="radio" name="audience" id="aud-business" value="business">
+        <label for="aud-business">Business</label>
+      </fieldset>
     </div>
   </header>
 
   <main id="main">
-    <section class="hero">
+    <!-- 1. Hero, full width -->
+    <section class="hero hero--full" aria-labelledby="hero-title">
       <div class="wrap stack">
         <p class="eyebrow">What <span class="mom">MOM</span> is</p>
-        <h1>Page headline. <span class="copy-tag">[COPY]</span></h1>
-        <p class="lede">[COPY] A short paragraph explaining MOM in plain words. Placeholder until the CBO's text arrives.</p>
+        <h1 id="hero-title">
+          <span data-aud="home">What MOM is for a home. <span class="copy-tag">[COPY]</span></span>
+          <span data-aud="business">What MOM is for a business. <span class="copy-tag">[COPY]</span></span>
+        </h1>
+        <p class="lede" data-aud="home">[COPY] A short paragraph explaining MOM for a household, in plain words.</p>
+        <p class="lede" data-aud="business">[COPY] A short paragraph explaining MOM for a business, in plain words.</p>
+        <p class="pending" data-aud="business">[pending Tomer] Business price line.</p>
+        <div class="actions">
+          <a class="btn" href="#join">Put us on the list</a>
+          <a class="btn btn--ghost" href="#how">How it works</a>
+        </div>
       </div>
     </section>
 
-    <section class="section">
+    <!-- 2. Three facts in a row -->
+    <section class="section" aria-labelledby="facts-title">
       <div class="wrap stack">
-        <h2>How it works <span class="copy-tag">[COPY]</span></h2>
-        <p>[COPY] Paragraph one.</p>
-        <p>[COPY] Paragraph two.</p>
+        <h2 id="facts-title" class="sr-only">[COPY] At a glance</h2>
+        <ul class="facts" data-aud="home">
+          <li><span class="fact-num">[COPY]</span><span class="fact-label">[COPY] Home what-fact one</span></li>
+          <li><span class="fact-num">[COPY]</span><span class="fact-label">[COPY] Home what-fact two</span></li>
+          <li><span class="fact-num">[COPY]</span><span class="fact-label">[COPY] Home what-fact three</span></li>
+        </ul>
+        <ul class="facts" data-aud="business">
+          <li><span class="fact-num">[COPY]</span><span class="fact-label">[COPY] Business what-fact one</span></li>
+          <li><span class="fact-num">[COPY]</span><span class="fact-label">[COPY] Business what-fact two</span></li>
+          <li><span class="fact-num">[COPY]</span><span class="fact-label">[COPY] Business what-fact three</span></li>
+        </ul>
       </div>
     </section>
 
-    <section class="section">
+    <!-- 3. Box shelf: four cards with labelled placeholder images (no product photos yet) -->
+    <section class="section" id="how" aria-labelledby="shelf-title">
       <div class="wrap stack">
-        <h2>What it does not do <span class="copy-tag">[COPY]</span></h2>
-        <p>[COPY] Short paragraph on privacy and limits, to be written by the CBO and checked by the CISO.</p>
-        <a class="btn" href="/#join">Put us on the list</a>
+        <h2 id="shelf-title">
+          <span data-aud="home">How it works at home <span class="copy-tag">[COPY]</span></span>
+          <span data-aud="business">How it works at work <span class="copy-tag">[COPY]</span></span>
+        </h2>
+        <ul class="shelf">
+          <li class="card">
+            <div class="ph" role="img" aria-label="Placeholder image 1"><span class="ph-label">Image 1 · placeholder</span></div>
+            <h3><span data-aud="home">[COPY] Home step one</span><span data-aud="business">[COPY] Business step one</span></h3>
+            <p><span data-aud="home">[COPY] Short line.</span><span data-aud="business">[COPY] Short line.</span></p>
+          </li>
+          <li class="card">
+            <div class="ph" role="img" aria-label="Placeholder image 2"><span class="ph-label">Image 2 · placeholder</span></div>
+            <h3><span data-aud="home">[COPY] Home step two</span><span data-aud="business">[COPY] Business step two</span></h3>
+            <p><span data-aud="home">[COPY] Short line.</span><span data-aud="business">[COPY] Short line.</span></p>
+          </li>
+          <li class="card">
+            <div class="ph" role="img" aria-label="Placeholder image 3"><span class="ph-label">Image 3 · placeholder</span></div>
+            <h3><span data-aud="home">[COPY] Home step three</span><span data-aud="business">[COPY] Business step three</span></h3>
+            <p><span data-aud="home">[COPY] Short line.</span><span data-aud="business">[COPY] Short line.</span></p>
+          </li>
+          <li class="card">
+            <div class="ph" role="img" aria-label="Placeholder image 4"><span class="ph-label">Image 4 · placeholder</span></div>
+            <h3><span data-aud="home">[COPY] Home step four</span><span data-aud="business">[COPY] Business step four</span></h3>
+            <p><span data-aud="home">[COPY] Short line.</span><span data-aud="business">[COPY] Short line.</span></p>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 4. The form, then the confirm step and the place-on-the-list step -->
+    <section class="section join" id="join" aria-labelledby="join-title" data-join>
+      <div class="wrap">
+        <div class="step stack" data-step="form">
+          <h2 id="join-title">
+            <span data-aud="home">Form heading <span class="copy-tag">[COPY]</span></span>
+            <span data-aud="business">Form heading <span class="copy-tag">[COPY]</span></span>
+          </h2>
+          <p data-aud="home">[COPY] One line on what joining the list means for a home.</p>
+          <p data-aud="business">[COPY] One line on what joining the list means for a business.</p>
+
+          <!--
+            NOT CONNECTED. This form submits nowhere on purpose.
+            The action stays empty and /assets/site.js holds submit, shows the
+            next step locally and clears the field; nothing leaves the page.
+            The CSP in /_headers (form-action 'none') also blocks submission.
+            Do not add an action URL, a fetch call, a third-party form service,
+            a human-check widget or analytics without a CISO ruling posted in
+            the CPO chat; the action, the CSP and the human-check slot change on
+            that ruling and no other.
+          -->
+          <form class="form" action="" method="post" data-waitlist novalidate>
+            <div class="field">
+              <label for="waitlist-email">Email</label>
+              <input id="waitlist-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="waitlist-error">
+            </div>
+            <!-- Human-check slot: empty until the CISO picks a check. -->
+            <div class="slot" data-slot="human-check">Human check · slot · not connected</div>
+            <button class="btn" type="submit">Put us on the list</button>
+            <p class="notice" id="waitlist-error" role="alert" hidden>[COPY] Enter an email address.</p>
+            <p class="fine">[COPY] Fine print on what we keep and why.</p>
+          </form>
+        </div>
+
+        <div class="step stack" data-step="confirm" tabindex="-1" hidden>
+          <h2>Check your email.</h2>
+          <p>[COPY] One line on the confirm link.</p>
+          <!-- Preview note stays until the form is connected, so no visitor is told an email was sent when it was not. -->
+          <p class="notice">[COPY] Preview: the list is not open yet, so no email was sent.</p>
+          <button class="btn btn--ghost" type="button" data-resend>Send the link again</button>
+          <p class="notice" data-resent role="status" hidden>[COPY] Preview: nothing was sent.</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 5. The "never" list -->
+    <section class="section" aria-labelledby="never-title">
+      <div class="wrap stack">
+        <h2 id="never-title">Never heading <span class="copy-tag">[COPY]</span></h2>
+        <ul class="never" data-aud="home">
+          <li>[COPY] Home what-never one.</li>
+          <li>[COPY] Home what-never two.</li>
+          <li>[COPY] Home what-never three.</li>
+          <li>[COPY] Home what-never four.</li>
+        </ul>
+        <ul class="never" data-aud="business">
+          <li>[COPY] Business what-never one.</li>
+          <li>[COPY] Business what-never two.</li>
+          <li>[COPY] Business what-never three.</li>
+          <li>[COPY] Business what-never four.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 6. Keeper line -->
+    <section class="section keeper">
+      <div class="wrap">
+        <p class="keeper-line" data-aud="home">[COPY] Home what-keeper line.</p>
+        <p class="keeper-line" data-aud="business">[COPY] Business what-keeper line.</p>
       </div>
     </section>
   </main>
 
+  <!-- 7. Footer with the 10^27 line -->
   <footer class="site-foot">
     <div class="wrap">
-      <span>RonnaOps · <span aria-hidden="true">10<sup>27</sup></span><span class="sr-only">10 to the 27th</span></span>
-      <span>[COPY] footer line</span>
+      <p class="ten27"><span class="num" aria-hidden="true">10<sup>27</sup></span><span class="sr-only">10 to the 27th</span> [COPY] One line on what ronna means.</p>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="/what/">What MOM is</a>
+        <a href="/off/">Take me off the list</a>
+      </nav>
+      <span>RonnaOps</span>
     </div>
   </footer>
 </body>

@@ -8,6 +8,9 @@
 //   - the page scrolls sideways or text is cut off at the right edge,
 //   - keyboard focus is not visible, or Tab does not start at the skip link,
 //   - the Home | Business switch does not swap the copy (with or without JS),
+//     on the main page and on /what/,
+//   - the 404 page loses its large 1e27 and the "Page not found." line,
+//   - any icon in the set is missing,
 //   - the waitlist steps misbehave (empty email, confirm, resend, place),
 //   - the waitlist form sends anything, with or without JavaScript,
 //   - /waitlist/ does not redirect to the main page.
@@ -37,7 +40,7 @@ try {
     try { await fetch(BASE + '/'); break; } catch { await new Promise((r) => setTimeout(r, 100)); }
   }
 
-  for (const f of ['/favicon.svg', '/favicon.ico', '/apple-touch-icon.png']) {
+  for (const f of ['/favicon.svg', '/favicon.ico', '/icon-32.png', '/icon-180.png', '/icon-512.png', '/apple-touch-icon.png']) {
     const r = await fetch(BASE + f);
     if (r.status !== 200) fail(`${f} returned ${r.status}`);
     if (r.headers.get('x-robots-tag') !== 'noindex') fail(`${f} lacks X-Robots-Tag noindex`);
@@ -107,14 +110,21 @@ try {
 
       if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_') || '_'}.png`), fullPage: true });
 
-      if (p === '/') {
+      if (is404) {
+        if ((await page.locator('.egg').textContent()).trim() !== '1e27') fail(`${tag} 404: 1e27 missing`);
+        if ((await page.locator('h1').textContent()).trim() !== 'Page not found.') fail(`${tag} 404: line under 1e27 is not "Page not found."`);
+        const size = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.egg')).fontSize));
+        if (size < 90) fail(`${tag} 404: 1e27 not large (${size}px)`);
+      }
+
+      if (p === '/' || p === '/what/') {
         // Switch: Home copy by default, Business copy after the switch.
         if (!(await visible(page, 'h1 [data-aud=home]')) || (await visible(page, 'h1 [data-aud=business]'))) fail(`${tag} switch: Home copy not the default`);
         await page.click('label[for=aud-business]');
         if (!(await visible(page, 'h1 [data-aud=business]')) || (await visible(page, 'h1 [data-aud=home]'))) fail(`${tag} switch: Business copy did not show`);
-        if ((await page.locator('#shelf-title [data-aud=business]').textContent()).trim() !== 'A box in your office') fail(`${tag} switch: Business shelf title wrong`);
+        if (p === '/' && (await page.locator('#shelf-title [data-aud=business]').textContent()).trim() !== 'A box in your office') fail(`${tag} switch: Business shelf title wrong`);
         await fit(' (Business)');
-        if (shots) await page.screenshot({ path: path.join(shots, `${tag}_business.png`), fullPage: true });
+        if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_')}business.png`), fullPage: true });
         await page.click('label[for=aud-home]');
         if (!(await visible(page, 'h1 [data-aud=home]'))) fail(`${tag} switch: Home copy did not come back`);
 
@@ -134,27 +144,29 @@ try {
         if ((await page.evaluate(() => document.activeElement?.dataset?.step)) !== 'confirm') fail(`${tag} waitlist: focus did not move to the confirm step`);
         await page.click('[data-resend]');
         if (!(await visible(page, '[data-resent]'))) fail(`${tag} waitlist: "Send the link again" shows nothing`);
-        if (shots) await page.screenshot({ path: path.join(shots, `${tag}_confirm.png`), fullPage: false });
+        if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_')}confirm.png`), fullPage: false });
         if (page.url() !== before || sent.length) fail(`${tag} waitlist: something was sent: ${sent.join(', ') || page.url()}`);
 
-        await page.goto(BASE + '/#on-the-list', { waitUntil: 'networkidle' });
-        await page.reload({ waitUntil: 'networkidle' });
-        if (!(await visible(page, '[data-step=place]')) || (await visible(page, '[data-step=form]'))) fail(`${tag} waitlist: place step not shown at /#on-the-list`);
-        await fit(' (place)');
-        if (shots) await page.screenshot({ path: path.join(shots, `${tag}_place.png`), fullPage: false, clip: undefined });
+        if (p === '/') {
+          await page.goto(BASE + '/#on-the-list', { waitUntil: 'networkidle' });
+          await page.reload({ waitUntil: 'networkidle' });
+          if (!(await visible(page, '[data-step=place]')) || (await visible(page, '[data-step=form]'))) fail(`${tag} waitlist: place step not shown at /#on-the-list`);
+          await fit(' (place)');
+          if (shots) await page.screenshot({ path: path.join(shots, `${tag}_place.png`), fullPage: false });
+        }
 
         // Without JS: the switch still works (CSS only) and the form sends nothing.
         const noJs = await browser.newContext({ javaScriptEnabled: false, viewport: { width, height } });
         const p2 = await noJs.newPage();
-        await p2.goto(BASE + '/', { waitUntil: 'networkidle' });
+        await p2.goto(BASE + p, { waitUntil: 'networkidle' });
         await p2.click('label[for=aud-business]');
-        if (!(await visible(p2, 'h1 [data-aud=business]'))) fail(`${tag} no-JS: switch does not swap copy`);
+        if (!(await visible(p2, 'h1 [data-aud=business]'))) fail(`${tag} ${p} no-JS: switch does not swap copy`);
         const posts = [];
         p2.on('request', (r) => { if (r.method() !== 'GET') posts.push(`${r.method()} ${r.url()}`); });
         await p2.fill('#waitlist-email', 'test@example.com');
         await p2.click('form[data-waitlist] button[type=submit]', { noWaitAfter: true });
         await p2.waitForTimeout(600);
-        if (posts.length) fail(`${tag} no-JS waitlist: sent ${posts.join(', ')}`);
+        if (posts.length) fail(`${tag} ${p} no-JS waitlist: sent ${posts.join(', ')}`);
         await noJs.close();
       }
       await page.close();

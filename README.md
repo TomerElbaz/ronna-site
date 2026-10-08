@@ -2,19 +2,19 @@
 Public site for MOM by Ronna
 
 Static site for Cloudflare Pages: plain HTML, CSS and one small script. No
-framework and no build step. In Pages, leave the build command empty and set
-the output directory to `public`. Only `public/` is published; this README and
-`tests/` stay in the repo and never reach ronna.mom.
+framework and no build step. Only `public/` is published; this README,
+`tests/` and `tools/` stay in the repo and never reach ronna.mom. See
+[How to deploy](#how-to-deploy).
 
 ## Pages
 
 | Path       | File                       | State                                                        |
 |------------|----------------------------|--------------------------------------------------------------|
 | `/`        | `public/index.html`        | The waitlist is the main page (UX design, 12:58 CT 8 Oct). Form **not connected**. |
-| `/what/`   | `public/what/index.html`   | Short "what MOM is" page; "How it works" links here. `[COPY]`. |
+| `/what/`   | `public/what/index.html`   | "What MOM is" in the main page's blocks, Home and Business. `[COPY]`. |
 | `/invite/` | `public/invite/index.html` | Invite-accept placeholder. Does nothing.                     |
 | `/off/`    | `public/off/index.html`    | "Take me off the list" placeholder. No form yet.             |
-| 404        | `public/404.html`          | Served by Pages for unknown paths.                           |
+| 404        | `public/404.html`          | `1e27`, large, over "Page not found." Served for unknown paths. |
 
 `/waitlist` and `/waitlist/` redirect to `/` (`public/_redirects`).
 
@@ -38,7 +38,8 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
 ## Rules
 
 - `main` publishes ronna.mom. Work lands on a branch; it reaches `main` only
-  on the CPO's word.
+  on the CPO's word. Pages previews are off, so a branch is checked with the
+  self-test, not a preview URL.
 - No secret, key or token ever goes in this repo.
 - No form destination, analytics or third-party script without a CISO
   ruling posted in the CPO chat. The waitlist form has an empty action, its
@@ -63,6 +64,56 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
   6.2:1); field edges and outlines use `#6A707A` (3.5:1, meets the 3:1
   boundary rule); every focus stop shows a white outline; Tab starts at a
   skip link.
+
+## Icons
+
+Mark A, the element tile's icon cut, lives in `public/favicon.svg` (filled
+`#0B0C0E` tile, white outline, white R drawn as a path so it needs no web
+font). The PNGs are rendered from it: `icon-32.png`, `icon-180.png` (on a
+solid `#0B0C0E` ground for iOS; `apple-touch-icon.png` is the same file at the
+path iOS asks for by default), `icon-512.png`, and `favicon.ico` (16, 32, 48).
+After changing the SVG, re-render them:
+
+```sh
+node tools/render_icons.mjs
+```
+
+## How to deploy
+
+Cloudflare Pages, connected to this GitHub repo. A push to `main` publishes
+ronna.mom; nothing else deploys.
+
+1. In the Cloudflare dashboard, open **Workers & Pages**, choose **Create**,
+   then **Pages**, then **Connect to Git**, and pick `TomerElbaz/ronna-site`.
+2. Set up the build:
+   - Production branch: `main`
+   - Framework preset: **None**
+   - Build command: leave empty
+   - Build output directory: `public`
+   - Root directory: leave empty
+   - Environment variables: none. The site needs no keys or secrets.
+3. Turn previews off. In the project's **Settings**, under **Builds**
+   (branch control), keep automatic production deployments for `main` on and
+   set preview branches to **None**. Other branches, including `claude/*`,
+   then build nothing and get no preview URL. Check a branch with the
+   self-test instead (see [Self-test](#self-test)).
+4. Add the domain. Under **Custom domains**, add `ronna.mom` (and `www` if
+   wanted, redirected to the apex).
+5. Merge to `main` only on the CPO's word.
+
+`public/_headers` and `public/_redirects` are read by Pages automatically. The
+`*.pages.dev` address serves the same site with the same headers, so it is
+`noindex` too.
+
+After a deploy, check the live headers and the redirect:
+
+```sh
+curl -sI https://ronna.mom/ | grep -iE 'content-security-policy|x-robots-tag'
+curl -sI https://ronna.mom/waitlist/ | grep -iE '^(HTTP|location)'
+```
+
+The first should show the CSP with `form-action 'none'` and
+`X-Robots-Tag: noindex`; the second a 301 to `/`.
 
 ## Preview locally
 

@@ -22,6 +22,7 @@
   });
 
   function show(name) {
+    if (!steps[name]) return; // the place step lives on the main page only
     Object.keys(steps).forEach(function (key) {
       steps[key].hidden = key !== name;
     });
