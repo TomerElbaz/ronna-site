@@ -1,4 +1,6 @@
-/* ronna.mom: one dark look, per the Brand desk sheet (8 Oct 2026).
+/* ronna.mom: one dark look, per the Brand desk sheet (8 Oct 2026) and UX's
+   waitlist design (12:58 CT, 8 Oct): carbon ground, Archivo display,
+   IBM Plex Mono numbers, white action, gold on the word MOM only.
    Fonts are self-hosted so the site makes no third-party requests. */
 
 @font-face {
@@ -26,9 +28,10 @@
 }
 
 :root {
-  --ground: #0B0C0E;
-  --surface: #16181C;
-  --line: #2A2D33;
+  --ground: #171A20;   /* carbon, per UX's waitlist design */
+  --surface: #1F232A;  /* card lift on carbon; derived here, UX to confirm */
+  --line: #2A2D33;     /* hairline separators (decorative) */
+  --edge: #6A707A;     /* secondary outline, field edges: 3.5:1 on carbon */
   --dim: #A6AAB1;
   --ink: #FFFFFF;      /* ink and the one action color */
   --mom: #B5964D;      /* gold belongs to MOM alone */
@@ -152,16 +155,21 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
   text-decoration: none; cursor: pointer;
 }
 .btn:hover { background: var(--dim); color: var(--ground); }
+/* Secondary: outlined in #6A707A. Text stays white, since #6A707A text on
+   carbon (3.5:1) would fail the 4.5:1 text rule. */
+.btn--ghost { background: transparent; color: var(--ink); border: 1px solid var(--edge); padding: 12px 23px; }
+.btn--ghost:hover { background: transparent; color: var(--ink); border-color: var(--ink); }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
 
 /* Forms */
 .form { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
-/* Field edge uses --dim: WCAG 1.4.11 wants 3:1 for a field's boundary and
-   --line on --surface is only 1.3:1 (--dim is 7.6:1). Focus adds white. */
+/* Field edge uses --edge: WCAG 1.4.11 wants 3:1 for a field's boundary;
+   #6A707A is 3.5:1 on carbon and 3.2:1 on the surface. Focus adds white. */
 .field input {
   font: inherit; color: var(--ink); background: var(--surface);
-  border: 1px solid var(--dim); border-radius: 4px; padding: 12px 14px; width: 100%;
+  border: 1px solid var(--edge); border-radius: 4px; padding: 12px 14px; width: 100%;
 }
 .field input::placeholder { color: var(--dim); opacity: 1; }
 .field input:focus-visible { border-color: var(--ink); outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -174,6 +182,84 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
 .links { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 24px; }
 .links a { color: var(--dim); }
 .links a:hover { color: var(--ink); }
+
+/* ---- Waitlist main page (UX design, 12:58 CT) ---- */
+
+/* Home | Business switch. CSS only: the checked radio shows its copy. */
+.switch {
+  display: inline-flex; margin: 0; padding: 2px; min-width: 0;
+  border: 1px solid var(--edge); border-radius: 4px;
+}
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.switch label {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--dim); padding: 8px 12px; border-radius: 3px; cursor: pointer; user-select: none;
+}
+.switch input:checked + label { background: var(--ink); color: var(--ground); }
+.switch input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: 2px; }
+body:not(:has(#aud-business:checked)) [data-aud="business"] { display: none !important; }
+body:has(#aud-business:checked) [data-aud="home"] { display: none !important; }
+@supports not selector(:has(*)) {
+  [data-aud="business"], .switch { display: none !important; }
+}
+
+.hero--full {
+  min-height: min(78vh, 760px); display: flex; align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.hero--full .wrap { width: 100%; }
+.pending {
+  font-family: var(--mono); font-size: 13px; color: var(--dim);
+  border: 1px dashed var(--edge); border-radius: 3px; padding: 4px 8px; align-self: flex-start;
+}
+
+.facts {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+}
+.facts li { border-top: 1px solid var(--edge); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fact-num { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; font-size: clamp(20px, 5vw, 40px); line-height: 1.1; color: var(--ink); overflow-wrap: anywhere; }
+.fact-label { color: var(--dim); font-size: 14px; line-height: 1.4; }
+
+.shelf {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;
+}
+@media (min-width: 760px) { .shelf { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.shelf .card { padding: 12px; gap: 8px; }
+.shelf .card h3 { font-size: 16px; }
+.shelf .card p { font-size: 14px; }
+.ph {
+  aspect-ratio: 4 / 3; display: grid; place-items: center; padding: 8px;
+  border: 1px dashed var(--edge); border-radius: 3px; background: var(--ground);
+}
+.ph-label { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); text-align: center; }
+
+.join .step { display: flex; flex-direction: column; gap: 16px; }
+.join .step[hidden] { display: none; }
+.join .step:focus { outline: none; }
+.slot {
+  min-height: 65px; display: flex; align-items: center; padding: 12px 14px;
+  border: 1px dashed var(--edge); border-radius: 4px;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim);
+}
+.fine { font-size: 14px; }
+.place-num { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; font-size: clamp(40px, 10vw, 72px); line-height: 1; color: var(--ink); }
+
+.never { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.never li { display: grid; grid-template-columns: 32px 1fr; color: var(--dim); max-width: 62ch; }
+.never li::before { content: "—"; content: "—" / ""; color: var(--ink); }
+
+.keeper-line {
+  font-weight: 700; font-stretch: 125%; letter-spacing: .02em; text-wrap: balance;
+  font-size: clamp(22px, 4.5vw, 40px); line-height: 1.15; color: var(--ink); max-width: 28ch;
+}
+
+.ten27 { font-family: var(--mono); font-size: 13px; color: var(--dim); max-width: none; }
+.ten27 .num { color: var(--ink); font-variant-numeric: tabular-nums; margin-right: .5em; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.foot-links a { color: var(--dim); }
+.foot-links a:hover { color: var(--ink); }
 
 /* Footer */
 .site-foot { border-top: 1px solid var(--line); }
@@ -188,7 +274,9 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
 @media print {
   :root { color-scheme: light; }
   html, body { background: #FFFFFF; color: #000000; }
-  .skip, .nav, .btn, .notice { display: none !important; }
+  .skip, .nav, .btn, .notice, .switch, .slot { display: none !important; }
+  .hero--full { min-height: 0; }
+  .ph { background: none; }
   body * { color: #000000 !important; }
   .site-head, .section, .site-foot { border-color: #999999; }
   .card { background: none; border-color: #999999; break-inside: avoid; }

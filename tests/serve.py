@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Local preview of public/ that behaves like Cloudflare Pages where it matters
-for the self-test: applies the /* headers from public/_headers and serves
-404.html with status 404 for unknown paths.
+for the self-test: applies the /* headers from public/_headers, follows
+public/_redirects, and serves 404.html with status 404 for unknown paths.
 
 Usage: python3 tests/serve.py [port]   (default 8080)
 """
@@ -30,6 +30,20 @@ def site_headers():
 HEADERS = site_headers()
 
 
+def site_redirects():
+    out = {}
+    path = os.path.join(ROOT, "_redirects")
+    if os.path.exists(path):
+        for line in open(path, encoding="utf-8"):
+            parts = line.split("#", 1)[0].split()
+            if len(parts) >= 2:
+                out[parts[0]] = (parts[1], int(parts[2]) if len(parts) > 2 else 302)
+    return out
+
+
+REDIRECTS = site_redirects()
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
@@ -42,6 +56,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 value = value.replace("; upgrade-insecure-requests", "")
             self.send_header(name, value)
         super().end_headers()
+
+    def do_GET(self):
+        target = REDIRECTS.get(self.path.split("?", 1)[0])
+        if target:
+            self.send_response(target[1])
+            self.send_header("Location", target[0])
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        super().do_GET()
 
     def send_error(self, code, message=None, explain=None):
         if code != 404:
