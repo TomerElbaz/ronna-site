@@ -3,7 +3,7 @@ Public site for MOM by Ronna
 
 Static site for Cloudflare Pages: plain HTML, CSS and one small script. No
 framework and no build step. Only `public/` is published; this README,
-`tests/` and `tools/` stay in the repo and never reach ronna.mom. See
+`docs/`, `tests/` and `tools/` stay in the repo and never reach ronna.mom. See
 [How to deploy](#how-to-deploy).
 
 ## Pages
@@ -53,6 +53,12 @@ the SIL Open Font License, so the site makes no third-party requests.
 Archivo is trimmed to the weights (400-700) and widths (100-125%) the site
 uses, to stay inside the page-weight budget; see `tools/trim_font.py`. Response
 headers, including a strict Content-Security-Policy, are in `public/_headers`.
+
+## Design documents
+
+- `docs/SIGNUP_DESIGN.md`: how the waitlist would store, confirm and delete
+  addresses, **for the CISO**. Design only; nothing in it is built, and the
+  site collects nothing until the CISO approves it.
 
 ## Rules
 
