@@ -1,6 +1,7 @@
 # Waitlist signup design — FOR CISO
 
-Status: **design only, revised to meet CISO rule 69 (9 Oct 2026, 03:26).**
+Status: **design only, to meet CISO rule 69 (9 Oct 2026, 03:26) and, for
+invitations, CISO rule 72 (9 Oct 2026, 04:30).**
 Nothing here is built. The site today collects nothing: the form's action is
 empty, its submit is held in the browser, and the Content-Security-Policy
 blocks form posts and all outside connections. Nothing in this design is
@@ -9,7 +10,12 @@ switched on until the CISO approves it in the CPO chat.
 Author: Web build desk (Claude Code, cloud). Lives in `docs/`, which
 Cloudflare Pages does not publish.
 
-Scope: the ronna.mom waitlist only. `/invite/` is **out of scope** (rule 69.10).
+Scope: the ronna.mom waitlist, and invitations to it (§12, "Invitations,
+half 1"). Rule 69.10 put `/invite/` out of scope; the CISO's rule 72 now sets
+the terms for it, so §12 is designed to rule 72 on top of rule 69.
+
+Per the CPO (04:30), signup and invites are built together, with every point
+of rules 69 and 72 written as a test, once the CISO has read this design.
 
 ---
 
@@ -26,7 +32,7 @@ Scope: the ronna.mom waitlist only. `/invite/` is **out of scope** (rule 69.10).
 | 7 | Logs never hold the email, token or IP; counts and error kinds only | §7 |
 | 8 | Page: no analytics, no third-party scripts or fonts, strict CSP, a two-line notice above the button | §8 |
 | 9 | Delete link removes the row at once; a reply asking for deletion is done by hand within 7 days | §9 |
-| 10 | `/invite/` out of scope | Not designed here. `/invite/` stays the static placeholder it is today. |
+| 10 | `/invite/` out of scope | Superseded for invitations by rule 72; see §12. Nothing else of `/invite/` is designed. |
 
 ---
 
@@ -36,8 +42,10 @@ Scope: the ronna.mom waitlist only. `/invite/` is **out of scope** (rule 69.10).
   `ronna-site-signup` here. Its code would live in this repo under `worker/`
   (not yet written).
 - It is reachable **only through routes on `ronna.mom`**:
-  `ronna.mom/api/signup`, `/api/confirm`, `/api/delete`. Its default Cloudflare
-  subdomain is turned off, so it has no other address.
+  `ronna.mom/api/signup`, `/api/confirm`, `/api/delete`, and for invitations
+  (§12) `/api/invite/*` (public) and `/api/family/*` and `/api/operator/*`
+  (both behind Cloudflare Access). Its default Cloudflare subdomain is turned
+  off, so it has no other address.
 - **One D1 database that belongs to it alone**, called `ronna-site-waitlist`
   here.
 - **Bindings:** the Worker has exactly one D1 binding, to `ronna-site-waitlist`,
@@ -315,6 +323,7 @@ using one documented admin command, and answer from that mailbox.
 | Cloudflare Worker `ronna-site-signup` | Cloudflare, Inc. | Runs `/api/signup`, `/api/confirm`, `/api/delete`. | Yes, in memory while handling a request. |
 | Cloudflare D1 `ronna-site-waitlist` | Cloudflare, Inc. | Stores the four-column rows and token hashes. | Yes, at rest. |
 | Cloudflare WAF rate limiting; Turnstile only if needed | Cloudflare, Inc. | Outer rate fence; bot check if ever required. | No. |
+| Cloudflare Access (Zero Trust) | Cloudflare, Inc. | Signs in family owners and Tomer before they can mint or revoke invite codes (§12). | Yes: the owner's sign-in email, in Cloudflare's own Access logs (§12.9). |
 | Cloudflare DNS | Cloudflare, Inc. | `ronna.mom` and the mail records (SPF, DKIM, DMARC). | No. |
 | **Amazon SES** | Amazon Web Services, Inc. ([privacy](https://aws.amazon.com/privacy/)) | Sends the confirm and delete emails. | Yes, to send; kept in its logs per its terms. |
 | A mailbox for replies | *To name: who runs it* | Hand-handled deletion requests (§9). | Yes, the replies. |
@@ -335,3 +344,272 @@ outside fonts or scripts, tracking of any kind, or **any MOM product resource**.
 6. One-click delete versus a button on `/off/` (§9).
 7. Whether the D1 restore window is acceptable under rule 9, and how the privacy page words it (§9).
 8. Who runs the reply mailbox (§9, §10).
+9. Invitations: the points in §12.11.
+
+---
+
+## 12. Invitations, half 1 (rule 72, on top of rule 69)
+
+Half 1 is the design. Half 2 is the build, done together with signup once
+the CISO has read this, with every point below as a test (§12.10).
+
+### 12.0 Rule 72, point by point
+
+| # | Rule | Where it is met |
+|---|---|---|
+| 1 | Only an owner of an active family mints, through a route behind Cloudflare Access in the waitlist Worker; family is an opaque ID; nothing binds this Worker to MOM; max 5 live codes, a sixth refused | §12.1, §12.2 |
+| 2 | ≥80 random bits from the crypto RNG; 16 Crockford base32 characters in groups of 4; only SHA-256 stored; shown once | §12.3 |
+| 3 | Code never in a server-logged URL; `/invite/#code` or typed; POST body only; no-referrer; a test that no request URL contains a code | §12.4 |
+| 4 | Invite page shows "Invited by" and a chosen first name (max 20 characters, no surname), nothing else | §12.5 |
+| 5 | One reply for every bad code: "This invite isn't valid.", same status and timing | §12.5 |
+| 6 | Reserved on submit, spent only at `/confirm/`, atomically; released if confirmation lapses | §12.6 |
+| 7 | 30-day expiry; the inviter or Tomer can revoke at once | §12.7 |
+| 8 | Rate limits per salted IP hash, 10 an hour, plus a global cap; 10 failures in an hour lock that hash for the hour | §12.8 |
+| 9 | What is stored, for inviter and invitee; the inviter sees only used or unused | §12.2 |
+| 10 | Logs: counts and error kinds only, never a code, hash, email, IP or name | §12.9 |
+| 11 | Deletion: invitee's delete link removes the row and its link; a family leaving revokes unused codes, erases its display name, empties invited-by | §12.7 |
+| 12 | MOM sends no invitations; the inviter shares the code; the referral line promises no move up the list | §12.5 |
+
+### 12.1 Who mints, and where
+
+- **Same Worker and D1** as signup (`ronna-site-signup`, `ronna-site-waitlist`),
+  under every condition of rule 69. **Nothing binds this Worker to MOM**, and
+  it never calls MOM. It learns nothing from the MOM product; whatever it
+  knows about families is entered by Tomer (below).
+- **Family pages:** `ronna.mom/family/` (a static page, `noindex`) and
+  `ronna.mom/api/family/*` (Worker). Both sit behind **one Cloudflare Access
+  application**, whose policy lets in only the sign-in emails Tomer lists for
+  family owners. The Access allowlist lives in Cloudflare's dashboard, not
+  in this repo.
+- **Operator pages:** `ronna.mom/api/operator/*`, behind a **second Access
+  application** that lets in only Tomer.
+- **Every Access request is checked twice.** Access blocks it at the edge,
+  and the Worker also verifies the `Cf-Access-Jwt-Assertion` token against
+  Cloudflare's published Access signing keys, its audience tag and expiry. A
+  request that skipped Access is refused even if a route were misconfigured.
+- **Active families:** a family is "active" only while its row in `families`
+  says so. Tomer sets that through the operator route, because this site
+  can't and mustn't read the MOM product to find out.
+- **Linking an owner to a family:** Tomer creates the family row, which gets a
+  random opaque ID such as `fam_7K3QX9PDM2TAB4RN`, and a one-time
+  **enrolment code** (same format as an invite code, hash only, 7 days, single
+  use). He gives it to the owner by hand. The owner signs in through Access,
+  enters it on `/family/`, and the Worker stores the owner's **Access user
+  ID**, Cloudflare's opaque identifier for that sign-in, not their email,
+  against the family. **This extra field is not in rule 72.9's list; see
+  §12.11, point 1.**
+- **Five live codes, a sixth refused:** "live" means unused or reserved, and
+  not expired, revoked or spent. Minting a sixth while five are live returns
+  a refusal and makes nothing. The check and the insert run in one
+  transaction, so two clicks at once can't make six.
+
+### 12.2 What is stored (rule 72.9)
+
+**`families`, the inviter side:**
+
+| Column | Holds |
+|---|---|
+| `family_id` | Random opaque ID. Never a name. |
+| `display_first_name` | The first name the owner chose. 1 to 20 characters, one word (no spaces), letters plus `-` and `'`. Emptied when the family leaves. |
+| `status` | `active` or `left`. |
+| `created_at`, `left_at` | Times. |
+| `owner_access_id` | *Proposed, needs the CISO's yes (§12.11, point 1):* the Access user ID that may act for this family. |
+
+**`invite_codes`:**
+
+| Column | Holds |
+|---|---|
+| `code_id` | Random opaque ID, used to refer to a code without its hash. |
+| `code_hash` | SHA-256 of the normalised code (§12.3). Unique. |
+| `family_id` | Who it belongs to. |
+| `status` | `unused`, `reserved`, `used` or `revoked`. |
+| `created_at`, `expires_at` | Times; `expires_at` is creation plus 30 days. |
+| `reserved_until` | While reserved: when the reservation lapses (§12.6). |
+| `used_at`, `revoked_at` | Times. |
+
+**Invitee:** rule 69's `signups` row (email, status, created and confirmed
+times), **plus `invited_by_family_id` and `invite_code_id`**, both empty for
+people who signed up without a code. Rule 72.9 adds these two to rule 69.2.
+
+**The inviter sees only used or unused.** `/family/` lists each code as
+**used** or **unused**, with its expiry and a revoke button. Reserved shows
+as unused. A revoked or expired code drops off the list. It never shows an
+invitee's email, place or status, or any other detail.
+
+### 12.3 The code (rule 72.2)
+
+- **80 random bits** from `crypto.getRandomValues` (10 bytes), written as **16
+  Crockford base32 characters** in **groups of 4**: `7K3Q-X9PD-M2TA-B4RN`.
+  The alphabet is `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, which has no I, L, O
+  or U.
+- **Normalised before hashing:** upper-case it, drop hyphens and spaces, and
+  read `I` and `L` as `1` and `O` as `0` (Crockford's rule), so a typed code
+  matches the printed one.
+- **Only `SHA-256(normalised code)` is stored.**
+- **Shown once:** the mint response carries the code. `/family/` shows it
+  with **Copy** and a line saying "This is the only time you'll see this
+  code." The code isn't kept in the page's storage, and reloading shows it
+  as **unused**, without the code.
+
+### 12.4 The code stays out of logged URLs (rule 72.3)
+
+- **Shared as** `https://ronna.mom/invite/#code=7K3Q-X9PD-M2TA-B4RN`, or typed
+  into the box on `/invite/`. After `#`, the code is never sent to the server
+  in a request line.
+- `/invite/` reads the fragment, **clears it from the address bar at once**
+  (`history.replaceState`), and sends the code **only in a POST body** to
+  `/api/invite/lookup` and `/api/invite/redeem`.
+- **No referrer:** `/invite/` keeps `<meta name="referrer"
+  content="no-referrer">` (already in place), and `public/_headers` gains a
+  `/invite/*` rule with `Referrer-Policy: no-referrer` and `Cache-Control:
+  no-store`.
+- **Test, `invite-code-never-in-url`:** the browser test opens
+  `/invite/#code=<test code>`, walks lookup, submit and confirm, and records
+  every request the browser makes. It fails if any request URL (path or
+  query) contains the code in any form: grouped, ungrouped or lower-case. A
+  Worker unit test also fails if any route reads a code from a URL.
+
+### 12.5 The invite page (rules 72.4, 72.5, 72.12)
+
+1. **Lookup.** The page posts the code to `/api/invite/lookup`.
+   - If the code is **valid**, the Worker returns the inviter's display first
+     name, and the page shows **"Invited by"** and that name, **nothing
+     else** about the inviter. The name is inserted as text, never as HTML.
+   - Every **bad** code (wrong, expired, revoked, used, or reserved by
+     someone else) gets **one reply**: the same status (`200` with
+     `{"ok": false}`), the same body and the same timing floor (for example
+     400 ms whichever path ran). The page shows **"This invite isn't
+     valid."**
+2. **Join.** With a valid code, the page shows the email field, rule 69's
+   two-line notice above the button, and the **referral line**:
+   "An invite doesn't move you up the list." ([COPY] for the CBO; rule
+   72.12 sets what it must say, not its words.)
+3. **Submit.** The page posts `{code, email}` to `/api/invite/redeem`.
+   - A bad code still gets "This invite isn't valid."
+   - Otherwise the reply is rule 69's same answer, "Check your inbox", for
+     every plausible address, new or already on the list.
+4. **Place on the list ignores invites.** The place is computed from
+   `confirmed_at` alone (§2), and a test checks that being invited never
+   changes it.
+5. **MOM sends no invitations.** No email is sent to an invitee because of a
+   code. The only email an invitee gets is rule 69's confirm email, after
+   they submit their own address. The inviter shares the code themselves.
+
+### 12.6 Reserve on submit, spend at confirm (rule 72.6)
+
+- **Reserve, on `/api/invite/redeem`,** in one statement: set the code
+  `reserved` with `reserved_until` = confirm-token expiry (24 h, rule 69.3),
+  only where it is `unused` (or `reserved` with `reserved_until` passed), not
+  revoked and not expired.
+  - **One of two concurrent requests wins.** The update matches one row once;
+    the loser sees no row and gets "This invite isn't valid."
+  - The pending signup records `invite_code_id` and `invited_by_family_id`.
+  - If the email is already on the list, nothing is reserved, and the reply
+    is still "Check your inbox" (rule 69.4).
+- **Spend, at `/confirm/`,** inside the same transaction that uses the
+  confirm token (§3): set the code `used` only where it is `reserved` for this
+  signup's `invite_code_id` and the reservation hasn't lapsed. Again, exactly
+  one wins.
+- **Released if confirmation lapses:** a reservation whose `reserved_until`
+  has passed counts as unused for reservation (above). The daily run (§3)
+  also resets lapsed reservations to `unused`, provided the code hasn't
+  expired.
+  - If the person confirms after the lapse, they still join the waitlist (the
+    signup is theirs), but **without the invited-by mark**, since the code
+    wasn't spent.
+  - If someone else reserved the code meanwhile, theirs stands.
+
+### 12.7 Expiry, revoking, families leaving (rules 72.7, 72.11)
+
+- **30-day expiry** from minting. An expired code is a bad code (§12.5).
+- **Revoke at once:**
+  - the owner, on `/family/`, for any of their unused codes;
+  - Tomer, through `/api/operator/revoke`, for any code, or for all of a
+    family's unused codes.
+  Revoking takes effect on the next request.
+  - **A reserved code revoked before confirmation:** the person can still
+    confirm and join, but without the mark (§12.11, point 4).
+- **Invitee deletes themselves** (rule 69's delete link): the `signups` row
+  goes, taking `invited_by_family_id` and `invite_code_id` with it. The
+  code's own row doesn't point back at the invitee, so nothing else
+  connects them.
+- **A family leaves** (Tomer marks it `left`), in one transaction:
+  - all its unused and reserved codes become `revoked`;
+  - `display_first_name` is **erased** (set empty);
+  - `owner_access_id` is erased;
+  - every invitee row with that `invited_by_family_id` has it **emptied**,
+    along with `invite_code_id`.
+  Tomer also removes the owner from the Access allowlist.
+
+### 12.8 Rate limits (rule 72.8)
+
+- **Same salted IP hash as rule 69.6:** a fresh random salt each day,
+  deleted the next day, counters only.
+- **10 requests an hour per IP hash** across `/api/invite/*`.
+- **Global cap:** for example 200 redeems a day site-wide, for the CISO to
+  set. Over the cap, every code gets "This invite isn't valid." and nothing is
+  reserved.
+- **Lockout:** 10 bad-code replies in an hour from one IP hash **lock that
+  hash for the hour**. While locked, every request gets "This invite isn't
+  valid." with the same timing, so the lock itself isn't visible. Counted in
+  `invite_failures (hour, ip_hash, count)`, deleted after the hour.
+- **Family routes** are rate-limited per Access user ID: for example 20 mints
+  a day, well above the 5-live cap.
+- **Guessing isn't practical:** 2^80 codes, with at most 10 tries per IP hash
+  per hour, gives no realistic chance of hitting a live code.
+
+### 12.9 Logs (rule 72.10)
+
+- Same rule as §7: fixed event names, counts and error kinds only. For
+  example `invite.minted`, `invite.mint_refused_cap`, `invite.lookup_bad`,
+  `invite.reserved`, `invite.spent`, `invite.reservation_lapsed`,
+  `invite.revoked`, `invite.locked`, `family.left`.
+- **Never:** a code, a code hash, a code ID, a family ID, an email, an IP or
+  its hash, or a display name. Enforced by the same log tests as §7.
+- **For the CISO:** Cloudflare Access keeps its own sign-in logs, and they
+  record the email each owner signed in with. Those are Cloudflare's logs,
+  not ours, but they do hold an email. They can be kept short in the Access
+  settings (§12.11, point 2).
+
+### 12.10 Rules 72 and 69 as tests (built in half 2)
+
+Each of these fails the build when its rule breaks:
+
+| Test | Rule |
+|---|---|
+| `mint-requires-access-jwt`: no JWT, a forged one, or a wrong audience is refused | 72.1 |
+| `mint-requires-active-family`: a `left` family, or an unknown Access user, can't mint | 72.1 |
+| `mint-sixth-refused`: five live, the sixth refused, even with two at once | 72.1 |
+| `no-mom-binding`: the Worker's config has exactly the D1 binding and secrets listed in §1 | 72.1, 69.1 |
+| `code-shape`: 16 Crockford characters in 4 groups; ≥80 bits; RNG is `crypto.getRandomValues` | 72.2 |
+| `code-hash-only`: after minting, the DB holds the hash and not the code | 72.2 |
+| `code-shown-once`: the code appears only in the mint response | 72.2 |
+| `invite-code-never-in-url` (browser) and `no-route-reads-code-from-url` (unit) | 72.3 |
+| `invite-no-referrer`: `/invite/` sends `no-referrer`, by meta and by header | 72.3 |
+| `invite-shows-only-first-name`: the page shows "Invited by" plus the name and nothing else; a name over 20 characters or with a space is refused at save | 72.4 |
+| `bad-code-one-reply`: wrong, expired, revoked, used and reserved codes get the same status and body, with timing within a set tolerance | 72.5 |
+| `reserve-one-wins` and `spend-one-wins`: two at once, one succeeds | 72.6 |
+| `reservation-lapses`: after 24 h unconfirmed, the code can be reserved again | 72.6 |
+| `expiry-30-days`, `revoke-at-once` (owner and Tomer) | 72.7 |
+| `rate-10-an-hour`, `global-cap`, `lock-after-10-failures` | 72.8 |
+| `inviter-sees-used-unused-only`: the family response holds no email or invitee detail | 72.9 |
+| `logs-clean`: drives every path with known codes, emails, IPs and names, and fails if any appears in captured logs | 72.10, 69.7 |
+| `invitee-delete-removes-link` and `family-leave-erases` | 72.11 |
+| `invite-sends-no-email` and `place-ignores-invites` | 72.12 |
+| …plus one test per point of rule 69 (§0) | 69 |
+
+### 12.11 Open points for the CISO on invitations
+
+1. **The owner-to-family link:** rule 72.9's list has no field linking an
+   Access sign-in to a family, but rule 72.1 needs one. Proposed:
+   `owner_access_id`, Cloudflare Access's opaque user ID (not an email),
+   set by a one-time enrolment code Tomer hands the owner (§12.1). Approve,
+   or name another way.
+2. **Access sign-in logs** hold owners' emails, in Cloudflare's own logs
+   (§12.9). Accept, and set their retention to the shortest available?
+3. **The global redeem cap** and the per-owner mint limit (§12.8).
+4. **A reserved code revoked before confirmation:** the person joins without
+   the mark (proposed), or isn't allowed to confirm?
+5. **Display-name rule:** one word, letters, `-` and `'`, max 20. Is that
+   enough to keep surnames out, or should Tomer review names before they
+   show?
