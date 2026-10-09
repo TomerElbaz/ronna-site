@@ -1,353 +1,337 @@
 # Waitlist signup design — FOR CISO
 
-Status: **design only, for the CISO's ruling.** Nothing here is built. The site
-today collects nothing: the form's action is empty, its submit is held in the
-browser, and the Content-Security-Policy blocks form posts and all outside
-connections. No part of this design is switched on until the CISO approves it
-in the CPO chat, and each change it implies to `public/_headers` is listed in
-section 10 so it can be approved line by line.
+Status: **design only, revised to meet CISO rule 69 (9 Oct 2026, 03:26).**
+Nothing here is built. The site today collects nothing: the form's action is
+empty, its submit is held in the browser, and the Content-Security-Policy
+blocks form posts and all outside connections. Nothing in this design is
+switched on until the CISO approves it in the CPO chat.
 
-Author: Web build desk (Claude Code, cloud), 9 Oct 2026, on the CPO's order of
-03:24. Lives in `docs/`, which Cloudflare Pages does not publish.
+Author: Web build desk (Claude Code, cloud). Lives in `docs/`, which
+Cloudflare Pages does not publish.
 
-Scope: ronna.mom's own waitlist only. This design never reads from, writes to
-or calls the MOM product's systems, and nothing in it depends on them.
+Scope: the ronna.mom waitlist only. `/invite/` is **out of scope** (rule 69.10).
 
 ---
 
-## 1. Summary
+## 0. Rule 69, point by point
 
-| Question | Proposal |
-|---|---|
-| Where emails live | Cloudflare D1, bound only to this site's Pages Functions. Encrypted per row; looked up by a keyed hash. No third-party store. |
-| How people confirm | Double opt-in. A random single-use token, sent by email, valid 48 hours, opened at `/confirm/`. Only the token's hash is stored. |
-| Who sends the email | One transactional sender, chosen by the CISO from section 4. Preferred: Cloudflare's own email sending, if available on the account; otherwise Amazon SES with no tracking configured. |
-| What the email contains | Plain text plus a minimal HTML copy. One link. No images, no pixels, no link tracking, no marketing. |
-| Bots and abuse | Cloudflare rate limiting (per IP and per address), a honeypot field, uniform replies, and double opt-in itself. No CAPTCHA vendor. |
-| Deletion | Self-serve through `/off/` (emailed single-use link) and on request to the privacy contact. Hard delete, including tokens. |
-| Logging | Event names and counts only. Never the email, the token or the IP. Email and token never appear in any URL the server sees. |
-| `/invite/` later | Same token scheme, issued for a named address, single use, 7 days. Open question who issues it (section 9). |
-| Outside services | Cloudflare (hosting, functions, database, rate limiting, secrets, DNS); one email sender; GitHub (source only, no subscriber data). Full list in section 11. |
+| # | Rule | Where it is met |
+|---|---|---|
+| 1 | Own Worker and own D1, never any MOM binding; neither side can read the other | §1 |
+| 2 | Per row only: email, status, created and confirmed times; no name, IP or user agent | §2 |
+| 3 | Token ≥128 random bits, only its hash stored, 24 h expiry, single use; unconfirmed rows deleted after 7 days | §3 |
+| 4 | Same answer every time ("Check your inbox"); no way to learn who is on the list | §4 |
+| 5 | One transactional email service, named, with a link to its privacy terms; CISO yes before its key exists; key is a Worker secret, never in the repo; plain links, no pixels, no link rewriting, one-click delete link | §5 |
+| 6 | Rate limits per salted IP hash (salt rotated daily, counters only), plus a global cap; Cloudflare's own bot check if one is needed | §6 |
+| 7 | Logs never hold the email, token or IP; counts and error kinds only | §7 |
+| 8 | Page: no analytics, no third-party scripts or fonts, strict CSP, a two-line notice above the button | §8 |
+| 9 | Delete link removes the row at once; a reply asking for deletion is done by hand within 7 days | §9 |
+| 10 | `/invite/` out of scope | Not designed here. `/invite/` stays the static placeholder it is today. |
 
 ---
 
-## 2. Data stored, and where
+## 1. Own Worker, own D1 (rule 1)
 
-**Store: Cloudflare D1** (a SQLite database run by Cloudflare), one database,
-bound only to this site's Pages Functions (the `functions/` folder of this
-repo, served on `ronna.mom/api/...`). Nothing else has the binding.
+- **One Cloudflare Worker that belongs to this site alone**, called
+  `ronna-site-signup` here. Its code would live in this repo under `worker/`
+  (not yet written).
+- It is reachable **only through routes on `ronna.mom`**:
+  `ronna.mom/api/signup`, `/api/confirm`, `/api/delete`. Its default Cloudflare
+  subdomain is turned off, so it has no other address.
+- **One D1 database that belongs to it alone**, called `ronna-site-waitlist`
+  here.
+- **Bindings:** the Worker has exactly one D1 binding, to `ronna-site-waitlist`,
+  plus its secrets (§5, §6). It has **no binding to any MOM product resource**:
+  not the MOM product's tenant database named in rule 69, and no other MOM
+  database, KV namespace, queue, service binding or Worker. It never calls the
+  MOM product over the network either.
+- **Neither side can read the other:** no MOM product resource is bound to
+  `ronna-site-waitlist` or to this Worker, and this Worker is bound to none of
+  theirs. Deploys use a Cloudflare API token **scoped to this Worker, its route
+  and this one D1 database**, so a leaked deploy token can't reach anything else.
+  If the CISO wants the separation enforced by the account itself as well,
+  the Worker and D1 can live in a **separate Cloudflare account** that holds
+  only the `ronna.mom` zone. This doc recommends that.
+- **The static site stays on Cloudflare Pages**, serving `public/` as today.
+  The Worker only answers `/api/*`.
 
-Why D1 rather than Cloudflare KV: it gives a unique index (one row per
-address), atomic single-use updates on tokens, and real deletes. KV is
-eventually consistent, which makes "used exactly once" hard to guarantee.
+---
 
-**Region:** set a D1 location or jurisdiction hint the CISO chooses (for
-example EU). *Verify before build* what D1 offers on the account at that time.
+## 2. What each row holds (rule 2)
 
-**Table `signups`, one row per address:**
+**Table `signups`: four columns, nothing else.**
 
-| Field | What it holds |
+| Column | Holds |
 |---|---|
-| `id` | Random 128-bit id. Not derived from the email. |
-| `email_hash` | HMAC-SHA-256 of the normalised address (trimmed, lower-cased) with a secret key. Unique index. Used to find a row without decrypting anything. |
-| `email_enc` | The address encrypted with AES-256-GCM under a second secret key, with a random nonce per row. Decrypted only to send an email. |
-| `audience` | `home` or `business`, from the page's switch. Optional; the CISO may drop it. |
+| `email` | The address, trimmed and lower-cased. Primary key. |
 | `status` | `pending` or `confirmed`. |
-| `created_at`, `confirmed_at` | Timestamps, to the minute. |
-| `place` | Place on the list, assigned at confirmation. |
+| `created_at` | When the signup was made (UTC, to the second). |
+| `confirmed_at` | When it was confirmed; empty while pending. |
 
-**Table `tokens`:**
+Not stored anywhere: name, IP address, user agent, referrer, cookies,
+Home/Business choice, device data. The place number shown on `/confirm/` is
+**computed** (confirmed rows with an earlier `confirmed_at`, plus one), not
+stored.
 
-| Field | What it holds |
+**Supporting table `tokens`** (needed so that only a hash is kept, rule 3):
+
+| Column | Holds |
 |---|---|
-| `token_hash` | SHA-256 of the token. The token itself is never stored. Primary key. |
-| `signup_id` | The row it belongs to. |
-| `purpose` | `confirm`, `delete` or `invite`. |
-| `expires_at` | Creation plus 48 hours (`confirm`, `delete`) or 7 days (`invite`). |
-| `used_at` | Empty until used; set once. |
+| `token_hash` | SHA-256 of the token. Primary key. The token itself is never stored. |
+| `email` | The row it belongs to. Deleted with that row. |
+| `kind` | `confirm` or `delete`. |
+| `expires_at` | 24 h after creation for `confirm`; empty for `delete` (valid while the row exists). |
 
-**Not stored, anywhere:** IP address, user agent, referrer, cookies, device
-data, name, phone, location. No analytics.
+It holds no personal data beyond the `email` key that ties it to its row.
+**Question for the CISO:** does this supporting table fit rule 2? If not, §3's
+alternative removes it for confirm tokens.
 
-**Keys:** the HMAC key, the encryption key and the sender's API key live as
-encrypted environment variables (secrets) on the Pages project, set in the
-Cloudflare dashboard by the CISO's delegate. **Never in this repo.** Rotation:
-the encryption key can be rotated by re-encrypting rows in place; rotating the
-HMAC key means recomputing `email_hash`, which needs the old key once.
+**Rate-limit tables** (§6) hold salted IP hashes and counts only, for one day.
 
-**Retention:**
-- `pending` rows and their tokens are deleted 48 hours after creation if not
-  confirmed. Cleanup runs at the start of each signup request (no scheduled job).
-- Used and expired tokens are deleted the same way.
-- `confirmed` rows stay until the person asks to leave, or until the waitlist
-  closes, when the whole table is deleted (the CISO sets that date).
-- Point-in-time recovery: D1 keeps a restorable history (Time Travel) for a
-  fixed window (*verify the window for the account's plan*; it has been 7 days
-  on Free and 30 on Paid). A deleted address therefore remains recoverable by
-  an operator for that window, then is gone. The privacy page must say so.
+D1 encrypts data at rest on Cloudflare's side. No application-level encryption
+is added, because rule 2 keeps the row to the bare address and the lookup has
+to be by address. The CISO may ask for it; it would add a key and a hash column.
 
 ---
 
-## 3. Double opt-in through `/confirm/`
+## 3. Confirm token (rule 3)
 
-**Flow:**
-1. The visitor enters an email on `/` or `/what/` and submits.
-2. The page sends `POST /api/signup` with a JSON body `{email, audience,
-   website}` (`website` is the honeypot, section 5). The email is in the body
-   only, never in a URL.
-3. The function always replies the same way, `202 {"ok": true}`, whether the
-   address is new, pending, already confirmed or rate-limited. The page shows
-   "Check your email." That way nobody can learn whether an address is on the list.
-4. If the address is new, or pending with no live token, the function creates
-   or keeps the `pending` row, mints a `confirm` token and sends one email. If
-   the address is already confirmed, it sends nothing.
-5. The email's link is `https://ronna.mom/confirm/#t=<token>`.
-6. `/confirm/` shows a **Confirm** button. Only a click on it sends `POST
-   /api/confirm` with `{token}`. Opening the link alone confirms nothing.
-7. The function hashes the token, and in one statement marks it used *only if*
-   it exists, has purpose `confirm`, is unused and unexpired. If exactly one
-   row changed, the signup becomes `confirmed`, gets its `place`, and the reply
-   carries the place number for the page to show. Anything else gets one
-   generic reply: "That link has expired or was already used."
+- **Token:** 32 bytes (256 bits, above the 128-bit floor) from
+  `crypto.getRandomValues`, written as base64url (43 characters).
+- **Stored:** only its SHA-256, in `tokens`.
+- **Expiry:** 24 hours.
+- **Single use:** confirming runs one statement that **deletes** the token row
+  where the hash matches, the kind is `confirm` and it hasn't expired, and
+  returns its `email`. A token can be deleted only once, so a second use finds
+  nothing.
+- **Link:** `https://ronna.mom/confirm/#t=<token>`. The token sits after `#`,
+  so it is never sent in a request line and never reaches Cloudflare's request
+  logs. The page reads it, clears it from the address bar, and posts it in a
+  request body when the person clicks **Confirm**. A click is needed because
+  mail scanners open links, and a plain link that confirmed would let a scanner
+  confirm someone.
+- **Unconfirmed rows** (`pending`) are **deleted 7 days** after `created_at`,
+  with their tokens. A daily scheduled run of the Worker (a Cron Trigger)
+  does this, and also deletes expired tokens and the previous day's
+  rate-limit data (§6).
+- "Send the link again" within those 7 days mints a new token and deletes the
+  old one. At most one live confirm token per address; resends are throttled
+  (§6).
 
-**Token format:** 32 bytes from the runtime's cryptographic random source
-(`crypto.getRandomValues`), written as base64url: 43 characters, 256 bits of
-entropy. Only its SHA-256 is stored.
-
-**Expiry and use:** 48 hours, single use. "Send the link again" mints a new
-token and voids the old one. At most 3 confirm emails per address per 24
-hours.
-
-**Why the token sits after `#`:** a URL fragment is never sent to the server,
-so it never reaches Cloudflare's request logs or any proxy. The page reads it
-and sends it in a POST body. The page then removes it from the address bar
-(`history.replaceState`). With `Referrer-Policy: no-referrer` on `/confirm/`
-and `Cache-Control: no-store` (both already in place), it does not leak onward
-either.
-
-**Why a button, not a plain link:** mail security scanners open links in
-incoming mail, and some run scripts. A GET that confirms would let a scanner
-confirm an address its owner never meant to sign up. A POST behind a button
-click holds back nearly all of them.
-
-**Requests are checked:** the functions accept only `POST`, only
-`Content-Type: application/json`, and only an `Origin` of `https://ronna.mom`.
-That blocks cross-site form posts. Bodies over 2 KB are refused. All database
-queries use bound parameters.
+*Alternative, only if the CISO wants no `tokens` table for confirms:* a
+stateless token, an HMAC over `email | created_at` with a Worker secret.
+Nothing is stored, but single use then depends on `status` flipping to
+`confirmed`, and 24-hour expiry depends on the timestamp in the token. This doc
+recommends the stored-hash version above, because single use is exact there.
 
 ---
 
-## 4. The confirmation email
+## 4. Same answer every time (rule 4)
 
-**Sender, one of the following, chosen by the CISO:**
+- The page validates only the shape of the address (something@something.tld)
+  before sending. Anything that passes is **plausible** and goes to the Worker.
+- For every plausible address the Worker returns the **same status, the same
+  body and roughly the same time**: `202` with `{"ok": true}`. The page then
+  shows the same "Check your inbox" step. This holds whether the address is:
+  - **new:** a `pending` row is made and a confirm email sent;
+  - **pending:** a new token is sent, unless one went out in the last hour;
+  - **confirmed:** nothing is sent;
+  - **plausible but undeliverable, or rate-limited, or over the global cap:**
+    nothing is sent.
+- Timing: the Worker answers after a fixed short delay floor (for example
+  400 ms), whichever path ran. The email itself is sent after the reply goes
+  back, so a slow send doesn't show.
+- `/off/` (self-serve deletion request, §9) answers the same way, with "If
+  that address is on the list, we've sent a link."
+- **Copy note for the CPO:** rule 69 says "Check your inbox"; the page's
+  current in-page step, quoted by the CPO earlier, says "Check your email."
+  The rule is that the answer is identical; the exact words are the CPO's and
+  the CBO's to settle.
 
-| Option | Vendor | For | Against |
+---
+
+## 5. The email service (rule 5)
+
+**One service: Amazon Simple Email Service (Amazon SES)**, from Amazon Web
+Services, Inc.
+- Privacy terms: AWS Privacy Notice, <https://aws.amazon.com/privacy/>
+- Data protection terms: AWS Data Privacy FAQ, <https://aws.amazon.com/compliance/data-privacy-faq/>
+- Region: one region the CISO picks (for example `eu-west-1`).
+
+Why SES:
+- Open and click tracking exist in SES only through a "configuration set"
+  with tracking turned on. **None will be created**, so there is no pixel and
+  no link rewriting by construction, not by a setting someone can flip.
+- It sends plain transactional mail with a domain we authenticate (SPF, DKIM,
+  DMARC `p=reject` on a subdomain such as `mail.ronna.mom`).
+
+*Cloudflare's own email sending was considered. It would keep everything
+inside Cloudflare, but its availability to this account was not confirmed, and
+rule 69 asks for one named service. Switching later would need a new CISO yes.*
+
+**The key:**
+- An AWS IAM user or role allowed **only** `ses:SendEmail` from the one
+  verified identity.
+- Its key is created **only after the CISO's yes**, and stored as a **Worker
+  secret** (set in the Cloudflare dashboard, or through the CLI's secret
+  command, by the CISO's delegate). **Never in this repo**, never in a file,
+  never in chat.
+- The repo's existing self-test already fails on secret-shaped strings in
+  published files. When `worker/` exists, the same scan covers it.
+
+**Every email is plain:**
+- A plain-text part, plus a minimal HTML part with the same words. No images,
+  no remote resources, **no tracking pixels, no link rewriting**, no
+  attachments, no marketing.
+- **The confirm email** carries two links, both written out in full:
+  1. Confirm: `https://ronna.mom/confirm/#t=<token>`
+  2. **Delete: `https://ronna.mom/off/#d=<delete token>`.** One click
+     removes the address (§9).
+- It also says: "If this wasn't you, ignore this email; the address is
+  deleted in 7 days."
+- Headers carry `List-Unsubscribe: <https://ronna.mom/api/delete?d=...>` and
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058), so mail apps
+  can offer one-click delete too. *For the CISO:* this header form does put
+  the delete token in a URL the server sees. The Worker logs no URLs (§7), but
+  the CISO may prefer to drop the header and rely on the body link.
+- From: `RonnaOps <list@mail.ronna.mom>` (the address is [COPY] for the CBO).
+  Replies go to a mailbox that a person reads (§9).
+
+---
+
+## 6. Rate limits and bot check (rule 6)
+
+**Per IP, using a salted hash, with counters only:**
+- **Salt:** each UTC day the Worker makes a random 32-byte salt and stores it
+  in `salts (day, salt)`. Rows older than today are deleted by the daily run,
+  so yesterday's hashes can't be recomputed.
+- **Key:** `SHA-256(salt || client IP)`. The IP itself is used only in memory
+  to compute this, and is never stored or logged.
+- **Counter:** `ip_counts (day, ip_hash, count)`, incremented per request to
+  `/api/*`. Deleted with the day.
+- **Limits** (starting values, for the CISO to set): 5 signup requests per IP
+  hash per hour, 20 per day. Over the limit means the same `202` answer (§4)
+  and nothing sent.
+
+**Global cap:**
+- `global_counts (day, kind, count)` for `signup_emails` and `delete_emails`.
+- Cap (starting value): 500 confirm emails per day. Over it, the same answer
+  and nothing sent, plus an `over-global-cap` count in the logs (§7) for
+  someone to look at.
+
+**Per-address throttle, with no new storage:** at most one confirm email per
+address per hour, read from the existing token's creation time.
+
+**Edge rule:** a Cloudflare WAF rate-limiting rule on `ronna.mom/api/*` as an
+outer fence. It is Cloudflare's own, needs no code and stores nothing for us.
+
+**Bot check, only if needed: Cloudflare Turnstile** (Cloudflare's own, per
+rule 6), in the form's existing human-check slot. Not proposed for launch.
+If turned on, the Worker verifies the token server-side, and the CSP gains
+`https://challenges.cloudflare.com` in `script-src` and `frame-src` on that
+ruling only.
+
+---
+
+## 7. Logs (rule 7)
+
+- The Worker logs **only** fixed event names and counts, plus error kinds,
+  through one helper that accepts nothing else. For example:
+  `signup.accepted`, `signup.limited.ip`, `signup.limited.global`,
+  `confirm.ok`, `confirm.invalid`, `delete.ok`, `send.error.throttled`,
+  `send.error.rejected`, `db.error.timeout`.
+- **Never:** the email, a token, an IP or its hash, request bodies, URLs with
+  query strings, or the raw text of an error message from the database or SES,
+  which could echo input.
+- **Enforced by test**, when `worker/` exists: the self-test fails if any log
+  call passes anything other than a known event name and numbers, and a unit
+  test feeds a known address and token through every path and checks that the
+  captured log output contains neither.
+- Cloudflare's own logs: the token sits after `#` and the address travels in
+  a POST body, so Cloudflare's request records see only paths like
+  `/api/signup`. Worker log streaming to any outside destination stays off.
+
+---
+
+## 8. The page (rule 8)
+
+What the site does today already meets the first three points:
+- **No analytics.**
+- **No third-party scripts or fonts.** Fonts are self-hosted. The link checker
+  fails on any outside host, and the browser test fails if any request leaves
+  the site.
+- **Strict CSP**, drafted in issue #15. This design changes one line:
+  `connect-src 'none'` → `connect-src 'self'`, so the page can post to
+  `ronna.mom/api/*`. Still no outside host.
+
+**New: a two-line notice above the button**, on `/` and `/what/`. Draft
+wording, [COPY] for the CBO:
+
+> We keep only your email and when you joined.
+> Delete it any time with the link in every email, or at ronna.mom/off.
+
+It will be added when the form is connected, and its two lines checked in
+the browser test.
+
+---
+
+## 9. Deletion (rule 9)
+
+**Delete link, removing the row at once:**
+- Every email carries `https://ronna.mom/off/#d=<delete token>`. The delete
+  token is minted with the row, and only its hash is stored (`kind = delete`).
+- Opening the link runs the deletion straight away (one click). The page
+  posts the token, and the Worker deletes the `signups` row and all its
+  `tokens` rows in one transaction. The page then says it is done.
+- A mail scanner that opens the link would also delete the row. The only
+  harm is that the person signs up again; no data is exposed. The CISO may
+  prefer a confirm button here as on `/confirm/`, at the cost of the one-click rule.
+- `/off/` without a token: a form that sends a fresh delete link to the
+  address, with the same answer every time (§4).
+
+**Reply asking for deletion:** replies to the sender address reach a mailbox
+that a named person reads. Within **7 days** they delete the address by hand,
+using one documented admin command, and answer from that mailbox.
+
+**What is gone, and when:**
+- The row and its tokens leave `signups` and `tokens` **at once**.
+- D1 keeps point-in-time recovery (Time Travel) for a fixed window, last
+  known as 7 days on the Free plan and 30 on Paid. *Verify on the account.* For
+  that window an operator could restore a database copy that still holds the
+  row.
+- SES keeps sending logs per its own terms. No message content is stored by
+  us.
+- The privacy page must say all of this. **For the CISO:** does "at once" in
+  rule 9 accept the restore window, or should restores be forbidden by
+  procedure?
+
+---
+
+## 10. Every outside service
+
+| Service | Vendor | Why | Sees an address? |
 |---|---|---|---|
-| **A. Cloudflare email sending** | Cloudflare, Inc. | Keeps everything inside Cloudflare; no new vendor. | *Verify availability before choosing.* Cloudflare's long-standing Email Routing only sends to pre-verified addresses, which is no use here; its general sending service was announced as a beta and may not be open to this account. |
-| **B. Amazon SES** | Amazon Web Services, Inc. | Mature, cheap, regional. Open and click tracking exist only if a "configuration set" with tracking is attached, so with none attached there is no tracking at all, by construction. | A new vendor, and an AWS account to secure. |
-| C. Postmark | ActiveCampaign, LLC | Very good deliverability for transactional mail; tracking is off unless turned on. | A new vendor; keeps message content for a retention period that has to be set. |
+| Cloudflare Pages | Cloudflare, Inc. | Serves the static site (`public/`). | No. |
+| Cloudflare Worker `ronna-site-signup` | Cloudflare, Inc. | Runs `/api/signup`, `/api/confirm`, `/api/delete`. | Yes, in memory while handling a request. |
+| Cloudflare D1 `ronna-site-waitlist` | Cloudflare, Inc. | Stores the four-column rows and token hashes. | Yes, at rest. |
+| Cloudflare WAF rate limiting; Turnstile only if needed | Cloudflare, Inc. | Outer rate fence; bot check if ever required. | No. |
+| Cloudflare DNS | Cloudflare, Inc. | `ronna.mom` and the mail records (SPF, DKIM, DMARC). | No. |
+| **Amazon SES** | Amazon Web Services, Inc. ([privacy](https://aws.amazon.com/privacy/)) | Sends the confirm and delete emails. | Yes, to send; kept in its logs per its terms. |
+| A mailbox for replies | *To name: who runs it* | Hand-handled deletion requests (§9). | Yes, the replies. |
+| GitHub | GitHub, Inc. | Hosts this repo. | No. Code only, never addresses or keys. |
 
-**Recommendation:** A if it's available to the account when we build. If not,
-B, in the region the CISO picks, with no configuration set and no event
-publishing. Whichever is chosen is the **only** outside service that ever sees
-an address, and only for the moment of sending. Its retention of sent-message
-logs has to be checked and set to the minimum.
-
-**Sending domain:** a subdomain such as `mail.ronna.mom`, with SPF, DKIM and
-DMARC set to `p=reject` in Cloudflare DNS. *The sender address is [COPY]
-for the CBO.*
-
-**Content:**
-- From: RonnaOps, at the address above. Subject: [COPY].
-- Plain-text part plus a minimal HTML part saying the same thing.
-- One sentence on what this is. **One link**, the confirm URL, written out in
-  full in the plain-text part.
-- One line: "If this wasn't you, ignore this email. The address will be
-  deleted in 48 hours and nothing else happens."
-- Footer: RonnaOps and a link to `https://ronna.mom/privacy/`.
-- **Never:** remote images, tracking pixels, link redirects or rewriting,
-  open or click tracking, web beacons, marketing content, or attachments.
-- No `List-Unsubscribe` header, since this is a one-off transactional
-  message, not a list mailing. Later list mailings (launch news) would need it
-  and a one-click unsubscribe; that is a separate design.
-
-**The delete email** (section 6) follows the same rules, with its own single link.
+**Not used:** analytics, a CAPTCHA vendor, a mailing-list or CRM service,
+outside fonts or scripts, tracking of any kind, or **any MOM product resource**.
 
 ---
 
-## 5. Rate limiting and bot protection, without a CAPTCHA vendor
+## 11. Open points for the CISO
 
-Defences, in layers:
-
-1. **Double opt-in.** A bot that submits addresses gets nothing confirmed; at
-   most it causes confirm emails, which the next layers cap.
-2. **Cloudflare WAF rate-limiting rule** on `POST /api/*`, for example 5
-   requests per 10 minutes per IP, then a block for 10 minutes. Configured in
-   the dashboard, not in code. (The Free plan allows a small number of such
-   rules; *verify the current limit*.)
-3. **Per-address limits in the function**, using the Pages Functions rate
-   limiting binding keyed by `email_hash` (never by the address itself): at
-   most 3 confirm emails and 3 delete emails per address per 24 hours.
-4. **Honeypot.** A text field named `website`, hidden from people with CSS and
-   `aria-hidden`, and skipped by Tab. Bots that fill every field get the usual
-   `202` and nothing is sent.
-5. **Uniform replies.** Every outcome returns the same status and body, so a
-   bot learns nothing to tune against.
-6. **Cloudflare Bot Fight Mode** (a free, site-wide setting) as an option
-   for the CISO. It challenges known bots before they reach the page.
-
-**No CAPTCHA.** The form's human-check slot stays empty. If abuse shows up
-despite the layers above, the fallback is Cloudflare Turnstile. It is
-Cloudflare's own product, so no new vendor, but it loads a script and a frame
-from `challenges.cloudflare.com`. That would need its own CISO ruling and two
-CSP changes (section 10).
-
-**Monitoring:** daily counts of signups, confirmations and blocked requests
-(section 7). If confirm emails sent far outnumber confirmations, tighten the
-limits.
-
----
-
-## 6. Deletion on request
-
-**Self-serve, through `/off/`** ("Take me off the list"):
-1. The visitor enters an email; the page sends `POST /api/delete-request`.
-2. The reply is always the same: "If that address is on the list, we've sent
-   a link."
-3. If a row exists, a `delete` token is minted (48 hours, single use) and an
-   email sent with `https://ronna.mom/off/#t=<token>`.
-4. That page shows a **Delete** button. The click sends `POST /api/delete`
-   with the token, and the function **hard-deletes** the signup row and all
-   its tokens. It then replies "Done. The address is off the list."
-
-**By request:** a person can write to the privacy contact (address [COPY],
-for counsel and the CISO). An operator runs one documented delete by
-address, which hashes the address and deletes by `email_hash`. The request is
-answered and nothing else is kept.
-
-**What remains after deletion:** nothing in D1 except Time Travel's window
-(section 2). The email sender's sent-message log keeps whatever its own
-retention allows; set it to the minimum. Aggregate counts (section 7) carry
-no identity.
-
-**Pending rows** are deleted automatically after 48 hours (section 2), so an
-address someone else typed without permission is gone without any action.
-
----
-
-## 7. What is logged
-
-**Rule: never the email, never the token, never the IP, in any log we control.**
-
-**Allowed:** one line per request, with event and outcome, for example
-`signup accepted`, `signup limited`, `confirm ok`, `confirm expired`,
-`delete ok`, `send failed (provider code)`. Daily counts of the same.
-
-**How that holds:**
-- **URLs:** emails and tokens are only ever in POST bodies, and tokens in
-  links sit after `#`. Cloudflare's own request records (analytics, any
-  Logpush) see paths like `/api/signup` and `/confirm/`, nothing more.
-- **Code:** functions log through one helper that accepts only a fixed list
-  of event names and numbers. A test fails the build if any `console.*` call
-  passes a request body, an email-shaped string or a token.
-- **Errors:** caught and logged as an event name and an error class, never
-  the message from a database or the sender, which could echo input.
-- **Function logs:** Cloudflare's function logs (if turned on) keep what the
-  code prints plus request metadata. The above keeps both clean. Logpush to
-  any outside destination stays off.
-- **IP addresses** are seen by Cloudflare at the edge, as for any visit, and
-  used by the rate-limit rule. We don't store them and our code doesn't log them.
-
----
-
-## 8. Changes the site would need (once approved)
-
-- `functions/api/signup.*`, `confirm.*`, `delete-request.*`, `delete.*`: the
-  four endpoints above. They hold no secrets in code and are covered by tests
-  that run without a network.
-- `/` and `/what/`: the form posts JSON with `fetch` to `/api/signup` and
-  shows the existing "Check your email." step. Add the honeypot. The
-  human-check slot is removed, or kept empty for the Turnstile fallback.
-- `/confirm/`: reads `#t`, shows **Confirm**, posts, then shows the place
-  number from the reply. The existing preview note is removed at launch.
-- `/off/`: the request form plus the `#t` **Delete** step.
-- `/privacy/`: updated by the CBO and counsel to match this design: the
-  sender vendor, the 48-hour pending deletion, and the Time Travel window.
-- Tests: the browser test keeps "nothing leaves the site". Same-origin
-  `/api/` calls are the only connections allowed, and outside hosts stay forbidden.
-
----
-
-## 9. `/invite/` later
-
-**Same mechanism, purpose `invite`:**
-- Issued for one named address. Single use, valid 7 days, only the hash stored.
-- The link is `https://ronna.mom/invite/#t=<token>`. The page shows
-  **Accept**, posts the token, and the function checks it the same atomic way.
-- On success the page shows the next step.
-
-**Open question for the CPO and CISO: who issues invites, and what "next
-step" is.** This site must not call the MOM product's systems, so two shapes fit:
-1. **The site only invites people from its own list.** An operator marks
-   chosen `confirmed` rows, each gets an invite email, and accepting simply
-   records `accepted_at`. What happens after that is outside this site.
-2. **The product issues invites itself** and its emails link to `/invite/`
-   only as a landing page. The page then sends the person on, with the token
-   still after `#`, to an address the CPO names. The site stores and checks
-   nothing for invites.
-
-Either way: no invite token in a URL path or query, `no-referrer` and
-`no-store` on `/invite/` (as on `/confirm/`), and invites carry no personal
-data beyond the address they were sent to.
-
----
-
-## 10. Header changes this design would need
-
-Each is a separate line for the CISO to approve or refuse:
-
-| Header | Today | With this design | Why |
-|---|---|---|---|
-| CSP `connect-src` | `'none'` | `'self'` | The pages post JSON to `ronna.mom/api/...`. Still no outside host. |
-| CSP `form-action` | `'none'` | `'none'` (unchanged) | Posting is done by `fetch`, not native form submits. |
-| `/invite/*` `Cache-Control` | none | `no-store` | Same reason as `/confirm/*`. |
-| CSP `script-src`, `frame-src` | `'self'`, none | add `https://challenges.cloudflare.com` **only if** the Turnstile fallback is approved | Turnstile's script and frame. |
-
-`Referrer-Policy`, `Permissions-Policy`, `frame-ancestors`, `nosniff` and
-`noindex` stay as drafted in issue #15.
-
----
-
-## 11. Every outside service
-
-| Service | Vendor | What it does here | Sees subscriber data? |
-|---|---|---|---|
-| Cloudflare Pages | Cloudflare, Inc. | Hosts the site from `public/`. | No (static files). |
-| Cloudflare Pages Functions | Cloudflare, Inc. | Runs the four `/api/` endpoints on ronna.mom. | Yes, in memory while handling a request. |
-| Cloudflare D1 | Cloudflare, Inc. | Stores signups (encrypted) and token hashes. | Yes, encrypted at rest by us, and by Cloudflare beneath. |
-| Cloudflare WAF rate limiting, Bot Fight Mode | Cloudflare, Inc. | Blocks floods and known bots at the edge. | IP addresses, as for any visit; not stored by us. |
-| Cloudflare secrets (Pages environment variables) | Cloudflare, Inc. | Hold the two keys and the sender's API key. | No (keys only). |
-| Cloudflare DNS | Cloudflare, Inc. | Serves ronna.mom and the mail records (SPF, DKIM, DMARC). | No. |
-| **Email sender: one of** Cloudflare email sending / Amazon SES / Postmark | Cloudflare, Inc. / Amazon Web Services, Inc. / ActiveCampaign, LLC | Delivers confirm and delete emails. | Yes: the address and the email it is sent, for that sender's log retention. |
-| GitHub | GitHub, Inc. (Microsoft) | Hosts this repo; pushes to `main` trigger deploys. | No. Code and docs only, never subscriber data or keys. |
-| Cloudflare Turnstile (**fallback only, not proposed**) | Cloudflare, Inc. | Human check if the layers in section 5 aren't enough. | A browser challenge; no address. |
-| Domain registrar for ronna.mom | *To confirm: whoever holds the registration* | Holds the domain. | No. |
-
-**Not used:** analytics of any kind, a CAPTCHA vendor, a mailing-list or CRM
-service, outside font or script hosts, tracking pixels, or any service owned by
-the MOM product.
-
----
-
-## 12. Decisions for the CISO
-
-1. Approve D1 as the only store, with per-row encryption and a keyed hash, and choose its region.
-2. Choose the email sender (A, B or C) and its log retention.
-3. Approve the token scheme: 256-bit random, hash stored, single use, 48 hours (7 days for invites), `#` fragment plus a button.
-4. Approve the bot layers without a CAPTCHA, and whether Bot Fight Mode is on.
-5. Approve the deletion paths and the Time Travel disclosure.
-6. Approve the logging rule and the test that enforces it.
-7. Keep or drop `audience` (Home or Business) in the stored row.
-8. Approve the header changes in section 10, line by line.
-9. With the CPO: who issues invites (section 9).
-10. Set when the whole list is deleted after the waitlist closes.
+1. Does the supporting `tokens` table fit rule 2 (§2), or take the stateless alternative for confirms (§3)?
+2. Separate Cloudflare account for the Worker and D1 (§1): yes or no.
+3. Amazon SES, and its region (§5). Your yes comes before any key exists.
+4. Keep or drop the `List-Unsubscribe` header, since it puts a token in a server-seen URL (§5).
+5. Rate-limit numbers and the global cap (§6).
+6. One-click delete versus a button on `/off/` (§9).
+7. Whether the D1 restore window is acceptable under rule 9, and how the privacy page words it (§9).
+8. Who runs the reply mailbox (§9, §10).
