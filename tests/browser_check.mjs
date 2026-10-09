@@ -64,6 +64,23 @@ const weights = [];
 const axeNotes = [];
 const axeRuns = [];
 const fail = (msg) => problems.push(msg);
+
+// Wait until fn(arg), run in the page through page.evaluate, is true. Used
+// instead of page.waitForFunction: some Playwright versions compile that
+// predicate inside the page with eval, which our CSP (no 'unsafe-eval')
+// blocks, so the wait never resolves and the CSP recorder logs "eval".
+// page.evaluate runs outside the page's script context, under any CSP.
+async function until(page, fn, arg, timeout = 5000) {
+  const end = Date.now() + timeout;
+  for (;;) {
+    if (await page.evaluate(fn, arg).catch(() => false)) return;
+    if (Date.now() > end) throw new Error('timed out');
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+if (/\.waitForFunction\(/.test(readFileSync(fileURLToPath(import.meta.url), 'utf8'))) {
+  fail('browser_check.mjs uses page.waitForFunction; use until() so the wait works under the CSP');
+}
 const visible = (page, sel) => page.locator(sel).first().isVisible();
 
 try {
@@ -198,7 +215,7 @@ try {
     };
     const cspWatch = async (page) => page.addInitScript(() => {
       window.__cspBlocked = [];
-      document.addEventListener('securitypolicyviolation', (e) => window.__cspBlocked.push(`${e.effectiveDirective} blocked ${e.blockedURI || '(inline)'}`));
+      document.addEventListener('securitypolicyviolation', (e) => window.__cspBlocked.push(`${e.effectiveDirective} blocked ${e.blockedURI || '(inline)'} at ${e.sourceFile || '?'}:${e.lineNumber || 0}${e.sample ? ' [' + e.sample.slice(0, 40) + ']' : ''}`));
     });
     const cspCheck = async (page, label) => {
       for (const b of await page.evaluate(() => window.__cspBlocked || [])) fail(`e2e ${label}: CSP ${b}`);
@@ -275,7 +292,7 @@ try {
       await page.waitForSelector('#name-error:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e family: a surname was accepted'));
       await page.fill('#family-name', "O'Neil");
       await page.click('form[data-name-form] button[type=submit]');
-      await page.waitForFunction(() => document.querySelector('[data-family-name]').textContent === "O'Neil", null, { timeout: 5000 }).catch(() => fail('e2e family: name not saved'));
+      await until(page, () => document.querySelector('[data-family-name]').textContent === "O'Neil").catch(() => fail('e2e family: name not saved'));
       await page.click('[data-mint]');
       await page.waitForSelector('[data-new-code]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e family: no code shown'));
       code = (await page.locator('[data-new-code-text]').textContent()).trim();
@@ -293,10 +310,10 @@ try {
       await page.waitForSelector('[data-step=family]:not([hidden])', { timeout: 5000 });
       const before = await page.locator('[data-codes] button').count();
       await page.locator('[data-codes] button').last().click();
-      await page.waitForFunction((n) => document.querySelectorAll('[data-codes] button').length === n - 1, before, { timeout: 5000 }).catch(() => fail('e2e family: revoke did not update the list'));
+      await until(page, (n) => document.querySelectorAll('[data-codes] button').length === n - 1, before).catch(() => fail('e2e family: revoke did not update the list'));
       for (let i = 0; i < 4; i++) await harness.call(site.env, '/api/family/mint', {}, { jwt: ownerJwt });
       await page.click('[data-mint]');
-      await page.waitForFunction(() => /5 live codes/.test(document.querySelector('[data-mint-note]').textContent), null, { timeout: 5000 }).catch(() => fail('e2e family: sixth code not refused'));
+      await until(page, () => /5 live codes/.test(document.querySelector('[data-mint-note]').textContent)).catch(() => fail('e2e family: sixth code not refused'));
       void spare;
       await cspCheck(page, '/family/');
       await ctx.close();
@@ -366,7 +383,7 @@ try {
       // Record anything the CSP blocks (issue #15), from the first byte on.
       await page.addInitScript(() => {
         window.__cspBlocked = [];
-        document.addEventListener('securitypolicyviolation', (e) => window.__cspBlocked.push(`${e.effectiveDirective} blocked ${e.blockedURI || '(inline)'}`));
+        document.addEventListener('securitypolicyviolation', (e) => window.__cspBlocked.push(`${e.effectiveDirective} blocked ${e.blockedURI || '(inline)'} at ${e.sourceFile || '?'}:${e.lineNumber || 0}${e.sample ? ' [' + e.sample.slice(0, 40) + ']' : ''}`));
       });
       const res = await page.goto(BASE + p, { waitUntil: 'networkidle' });
       if (res.status() !== (is404 ? 404 : 200)) fail(`${tag} ${p}: status ${res.status()}`);

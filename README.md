@@ -207,7 +207,8 @@ for Cloudflare Access with dev-only sign-ins.
 Run all four before every push:
 
 ```sh
-npm ci                             # once: installs axe-core (test-only, pinned)
+npm ci                             # once: axe-core and Playwright, both test-only and pinned
+npx playwright install chromium    # once: the browser for that Playwright version
 npm run test:worker                # the Worker: every point of rules 69, 72, 74 (Node 22, no network)
 python3 tests/check_static.py      # standard library only
 python3 tests/check_links.py       # standard library only
@@ -261,4 +262,10 @@ Enter on an empty field keeps focus there and marks it invalid; Enter on a
 filled one moves focus to the confirm step, then Tab reaches "Send the link
 again") and fails on a missing focus ring or a wrong stop; and records every
 `securitypolicyviolation`, failing if the CSP blocks anything on any page.
-If Playwright is installed elsewhere, set `PLAYWRIGHT_MODULE` to its path.
+Playwright is pinned (1.56.1) so every machine runs the same version. The
+browser test never uses `page.waitForFunction`; it waits with its own
+`until()`, which reads the page through `page.evaluate`, so no wait depends on
+evaluating code inside a page whose CSP forbids eval. A guard fails the test
+if `waitForFunction` comes back, and the CSP recorder names the source of
+anything it blocks. To use a Playwright installed elsewhere, set
+`PLAYWRIGHT_MODULE` to its path.
