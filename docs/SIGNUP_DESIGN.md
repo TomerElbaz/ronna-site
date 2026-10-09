@@ -163,7 +163,7 @@ recommends the stored-hash version above, because single use is exact there.
 Services, Inc.
 - Privacy terms: AWS Privacy Notice, <https://aws.amazon.com/privacy/>
 - Data protection terms: AWS Data Privacy FAQ, <https://aws.amazon.com/compliance/data-privacy-faq/>
-- Region: one region the CISO picks (for example `eu-west-1`).
+- Region: `us-east-2` (US East, Ohio), set by CISO rule 73(3).
 
 Why SES:
 - Open and click tracking exist in SES only through a "configuration set"

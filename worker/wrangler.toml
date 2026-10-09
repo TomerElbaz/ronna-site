@@ -30,7 +30,7 @@ crons = ["17 3 * * *"]
 [vars]
 SITE_ORIGIN = "https://ronna.mom"
 MIN_REPLY_MS = "400"
-SES_REGION = "eu-west-1"
+SES_REGION = "us-east-2"   # CISO rule 73(3)
 MAIL_FROM = "RonnaOps <list@mail.ronna.mom>"
 ACCESS_TEAM_DOMAIN = "SET-AT-SETUP.cloudflareaccess.com"
 FAMILY_AUD = "SET-AT-SETUP"

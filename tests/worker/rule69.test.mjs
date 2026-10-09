@@ -150,13 +150,16 @@ describe("69.5 one email service, key never in the repo, plain mail with a delet
       assert.match(m.text, /https:\/\/ronna\.mom\/off\/#d=D{43}/);
     }
   });
+  it("SES region is us-east-2 (CISO rule 73(3))", () => {
+    assert.match(read("worker/wrangler.toml"), /^SES_REGION = "us-east-2"/m);
+  });
   it("names no SES configuration set, so SES can't add tracking", () => {
     assert.doesNotMatch(read("worker/src/mail.js"), /ConfigurationSetName/);
   });
   it("sends nothing without the Worker secrets (nothing is live)", async () => {
     const logs = captureLogs();
     try {
-      await send({ SES_REGION: "eu-west-1", MAIL_FROM: "x@y.z" }, confirmMessage("a@example.com", "t", "d"));
+      await send({ SES_REGION: "us-east-2", MAIL_FROM: "x@y.z" }, confirmMessage("a@example.com", "t", "d"));
     } finally {
       logs.stop();
     }
