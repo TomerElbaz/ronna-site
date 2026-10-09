@@ -1,7 +1,9 @@
 # DRAFT FOR CISO (issue #15). Cloudflare Pages response headers for ronna.mom.
 # Not a ruling: the CISO approves or changes every line below in the CPO chat.
 #
-# Content-Security-Policy: no outside host at all. Fonts are self-hosted
+# Content-Security-Policy: no outside host at all. connect-src 'self' lets the
+# pages post to this site's own /api/ (the waitlist Worker, rules 69 and 74).
+# Fonts are self-hosted
 # (/assets/fonts), so none is needed for them either. Nothing inline is
 # allowed: no inline script, no inline style, no event-handler attributes.
 # form-action 'none' keeps the waitlist form inert until the CISO clears a
@@ -20,7 +22,7 @@
 # X-Robots-Tag noindex stays until the CPO says the copy is live; the pages
 # carry meta robots noindex too, and both come off together.
 /*
-  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
@@ -32,6 +34,20 @@
 /assets/fonts/*
   Cache-Control: public, max-age=31536000, immutable
 
-# The confirm landing may be opened with a token in its link: never store it.
+# Pages opened from links that carry a token or code after "#", and the
+# family page behind Access: never stored, and no referrer (rule 72.3).
 /confirm/*
   Cache-Control: no-store
+  Referrer-Policy: no-referrer
+
+/invite/*
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+
+/off/*
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+
+/family/*
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer

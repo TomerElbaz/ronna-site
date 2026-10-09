@@ -135,14 +135,11 @@
           <p data-aud="business">[COPY] One line on what joining the list means for a business.</p>
 
           <!--
-            NOT CONNECTED. This form submits nowhere on purpose.
-            The action stays empty and /assets/site.js holds submit, shows the
-            next step locally and clears the field; nothing leaves the page.
-            The CSP in /_headers (form-action 'none') also blocks submission.
-            Do not add an action URL, a fetch call, a third-party form service,
-            a human-check widget or analytics without a CISO ruling posted in
-            the CPO chat; the action, the CSP and the human-check slot change on
-            that ruling and no other.
+            Sends to this site's own /api/signup (the waitlist Worker, CISO
+            rules 69 and 74) with fetch, from /assets/site.js. The form's action
+            stays empty and the CSP keeps form-action 'none', so without
+            JavaScript nothing is sent. The reply is the same for every address
+            (rule 69.4). The Worker is not deployed; nothing is live.
           -->
           <form class="form" action="" method="post" data-waitlist novalidate>
             <div class="field">
@@ -160,8 +157,13 @@
               the widget even if someone pastes it in.
             -->
             <div class="slot" data-slot="human-check" data-size="normal" role="img" aria-label="Human check: not connected">Human check · not connected</div>
+            <!-- Honeypot (rule 69.6 bot layers): hidden from people and screen readers; bots that fill it get the usual reply and nothing is sent. -->
+            <div class="hp"><label for="waitlist-website">Website</label><input id="waitlist-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+            <!-- Rule 69.8: two lines above the button on what is kept and how to delete it. [COPY] wording for the CBO. -->
+            <p class="keep" data-keep>We keep only your email and when you joined.<br>Delete it any time with the link in every email, or at ronna.mom/off.</p>
             <button class="btn" type="submit">Put us on the list</button>
             <p class="notice" id="waitlist-error" role="alert" hidden>[COPY] Enter an email address.</p>
+            <p class="notice" data-failed role="alert" hidden>[COPY] That didn't go through. Try again in a minute.</p>
             <p class="fine">[COPY] Fine print on what we keep and why. <a href="/privacy/">Privacy</a></p>
           </form>
         </div>
@@ -169,10 +171,8 @@
         <div class="step stack" data-step="confirm" tabindex="-1" hidden>
           <h2>Check your email.</h2>
           <p>[COPY] One line on the confirm link.</p>
-          <!-- Preview note stays until the form is connected, so no visitor is told an email was sent when it was not. -->
-          <p class="notice">[COPY] Preview: the list is not open yet, so no email was sent.</p>
           <button class="btn btn--ghost" type="button" data-resend>Send the link again</button>
-          <p class="notice" data-resent role="status" hidden>[COPY] Preview: nothing was sent.</p>
+          <p class="notice" data-resent role="status" hidden>[COPY] Sent again. It can take a minute to arrive.</p>
         </div>
       </div>
     </section>

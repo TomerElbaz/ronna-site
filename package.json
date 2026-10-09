@@ -1,11 +1,14 @@
 {
   "name": "ronna-site-tests",
   "private": true,
-  "description": "Test-only tools for the ronna.mom self-test. Nothing here is published: Pages serves public/ only.",
+  "description": "Test-only tools for ronna.mom and its waitlist Worker. Nothing here is published: Pages serves public/ only, and the Worker is not deployed.",
   "scripts": {
-    "test": "python3 tests/check_static.py && python3 tests/check_links.py && node tests/browser_check.mjs"
+    "test": "npm run test:worker && npm run test:site",
+    "test:worker": "node --disable-warning=ExperimentalWarning --test 'tests/worker/*.test.mjs'",
+    "test:site": "python3 tests/check_static.py && python3 tests/check_links.py && node --disable-warning=ExperimentalWarning tests/browser_check.mjs"
   },
   "devDependencies": {
     "axe-core": "4.13.0"
-  }
+  },
+  "type": "module"
 }

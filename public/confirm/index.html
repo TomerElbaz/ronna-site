@@ -34,6 +34,7 @@
   <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/icon-180.png">
   <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -49,25 +50,37 @@
   </header>
 
   <!--
-    CONFIRM-EMAIL LANDING (CPO order, 8 Oct, issue #8). The page a double
-    opt-in link opens. Static: it reads nothing from the URL (no token is
-    parsed, stored or sent), runs no script and calls no service. The place
-    number is a placeholder. When the list goes live, confirming the token is
-    the job of whatever service the CISO clears, not of this page.
-    Referrer-Policy no-referrer (/_headers) keeps any token in the link from
-    leaking through the "Back to home" link; /confirm/* is no-store.
+    CONFIRM-EMAIL LANDING (rules 69.3, 72.6). The confirm email links to
+    /confirm/#t=<token>. The token sits after "#", so it never reaches a
+    server in a URL; /assets/site.js reads it, clears it from the address
+    bar, and sends it in a POST body only when the person clicks Confirm
+    (mail scanners open links; a click is needed). The place number comes
+    back from /api/confirm. No-referrer and no-store keep the token in.
   -->
   <main id="main">
-    <section class="hero hero--full">
+    <section class="hero hero--full" data-confirm>
       <div class="wrap stack">
         <p class="eyebrow"><span class="mom">MOM</span> waitlist</p>
-        <h1>You're on the list</h1>
-        <p class="place-num"><span class="sr-only">Place on the list: </span>#[COPY]</p>
-        <p class="lede">[COPY] One line on what happens next.</p>
-        <p class="pending">[pending Tomer] Referral line.</p>
-        <!-- Preview note stays until the list is live, so nobody is told they were confirmed when they were not. -->
-        <p class="notice">[COPY] Preview: the list is not open yet, so nothing was confirmed.</p>
-        <a class="btn" href="/">Back to home</a>
+        <h1 data-heading>Confirm your place</h1>
+        <div class="step stack" data-step="none" data-title="Confirm your place">
+          <p class="lede">[COPY] Open the link in the email we sent you. It works for 24 hours.</p>
+          <a class="btn btn--ghost" href="/#join">Put us on the list</a>
+        </div>
+        <div class="step stack" data-step="ready" data-title="Confirm your place" tabindex="-1" hidden>
+          <p class="lede">[COPY] One click puts you on the list.</p>
+          <button class="btn" type="button" data-confirm-button>Confirm</button>
+        </div>
+        <div class="step stack" data-step="done" data-title="You're on the list" tabindex="-1" hidden>
+          <p class="place-num"><span class="sr-only">Place on the list: </span><span data-place>#</span></p>
+          <p class="lede">[COPY] One line on what happens next.</p>
+          <!-- Rule 72.12: the referral line promises no move up the list. -->
+          <p class="referral">[COPY] An invite doesn't move anyone up the list.</p>
+          <a class="btn" href="/">Back to home</a>
+        </div>
+        <div class="step stack" data-step="bad" data-title="That link didn't work" tabindex="-1" hidden>
+          <p class="lede">That link has expired or was already used.</p>
+          <a class="btn" href="/#join">Put us on the list</a>
+        </div>
       </div>
     </section>
   </main>

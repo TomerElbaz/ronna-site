@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Family invites · RonnaOps</title>
+  <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
+  <meta name="robots" content="noindex">
+  <!-- Private page behind Cloudflare Access: no share tags, no referrer. -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#171A20">
+  <link rel="preload" href="/assets/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-head">
+    <div class="wrap">
+      <a class="wordmark" href="/" aria-label="RonnaOps home"><img class="tile" src="/favicon.svg" alt="" width="32" height="32"><span>RonnaOps</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/#join">Waitlist</a>
+      </nav>
+    </div>
+  </header>
+
+  <!--
+    FAMILY INVITES (rules 72 and 74). Behind its own Cloudflare Access
+    application (family owners only); the Worker checks the Access JWT and
+    its audience tag again on every /api/family/ call. Owners link their
+    family once with an enrolment code Tomer hands them himself, choose the
+    first name invitees will see, and make up to 5 live codes. A new code is
+    shown once. The page lists codes as used or unused only.
+  -->
+  <main id="main">
+    <section class="hero" data-family>
+      <div class="wrap stack">
+        <p class="eyebrow"><span class="mom">MOM</span> family invites</p>
+        <h1 data-heading>Family invites</h1>
+        <!-- Rule 74.2: Cloudflare Zero Trust Free keeps Access sign-in logs for 24 hours. -->
+        <p class="keep" data-access-notice>Cloudflare, which runs the sign-in for this page, keeps a record of your sign-in email for a day.<br>We keep no email for owners: only a sign-in ID linked to your family.</p>
+        <div class="step stack" data-step="loading" data-title="Family invites">
+          <p class="lede">One moment.</p>
+        </div>
+        <div class="step stack" data-step="denied" data-title="Family invites" tabindex="-1" hidden>
+          <p class="lede">[COPY] This page is for family owners. Sign in again, or ask Tomer for access.</p>
+        </div>
+        <div class="step stack" data-step="enrol" data-title="Link your family" tabindex="-1" hidden>
+          <p class="lede">[COPY] Enter the code Tomer gave you. It works once, for 7 days.</p>
+          <form class="form" action="" method="post" data-enrol-form novalidate>
+            <div class="field">
+              <label for="enrol-code">Code from Tomer</label>
+              <input id="enrol-code" name="code" type="text" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX" aria-describedby="enrol-error">
+            </div>
+            <button class="btn" type="submit">Link my family</button>
+            <p class="notice" id="enrol-error" role="alert" hidden>[COPY] That code didn't work. Check it, or ask Tomer for a new one.</p>
+          </form>
+        </div>
+        <div class="step stack" data-step="family" data-title="Your invite codes" tabindex="-1" hidden>
+          <p>Invitees see: Invited by <strong data-family-name></strong></p>
+          <form class="form" action="" method="post" data-name-form novalidate>
+            <div class="field">
+              <label for="family-name">First name invitees see</label>
+              <input id="family-name" name="name" type="text" autocomplete="given-name" maxlength="20" aria-describedby="name-error name-help">
+            </div>
+            <p class="fine" id="name-help">[COPY] One word: letters, - and ' only, up to 20 characters. No surname.</p>
+            <button class="btn btn--ghost" type="submit">Save name</button>
+            <p class="notice" id="name-error" role="alert" hidden>[COPY] Use one word: letters, - and ' only, up to 20 characters.</p>
+          </form>
+          <button class="btn" type="button" data-mint>Make a code</button>
+          <p class="notice" data-mint-note role="status" hidden></p>
+          <div class="new-code stack" data-new-code tabindex="-1" hidden>
+            <p class="new-code-text" data-new-code-text></p>
+            <p class="fine">[COPY] This is the only time you'll see this code. Share it yourself; MOM sends no invitations.</p>
+            <div class="actions">
+              <button class="btn btn--ghost btn--small" type="button" data-copy>Copy</button>
+              <button class="btn btn--ghost btn--small" type="button" data-hide-code>I've saved it</button>
+            </div>
+          </div>
+          <h2 class="codes-title">Your codes</h2>
+          <ul class="codes" data-codes></ul>
+          <p class="fine">[COPY] Each code works once, for 30 days. You can have 5 unused codes at a time. You'll see only whether a code was used, never who used it.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <p class="ten27"><span class="num" aria-hidden="true">10<sup>27</sup></span><span class="sr-only">10 to the 27th</span> [COPY] One line on what ronna means.</p>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="/terms/">Terms</a>
+        <a href="/off/">Take me off the list</a>
+      </nav>
+      <span>RonnaOps</span>
+    </div>
+  </footer>
+</body>
+</html>

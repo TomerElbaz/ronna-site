@@ -261,6 +261,39 @@ body:has(#aud-business:checked) [data-aud="home"] { display: none !important; }
 .foot-links a { color: var(--dim); }
 .foot-links a:hover { color: var(--ink); }
 
+/* Steps on the flow pages: one visible at a time, whatever display a step has. */
+.step[hidden], [data-step][hidden] { display: none !important; }
+.step:focus { outline: none; }
+
+/* Honeypot: out of sight, out of the tab order and the accessibility tree. */
+.hp { display: none !important; }
+
+/* Rule 69.8: the two-line notice above the button (and rule 74.2's on /family/). */
+.keep {
+  font-size: 14px; line-height: 1.5; color: var(--dim);
+  border-left: 2px solid var(--edge); padding-left: 12px; max-width: 62ch;
+}
+.referral { font-size: 14px; color: var(--dim); }
+.invited { font-size: clamp(18px, 2.4vw, 21px); color: var(--dim); }
+.invited strong { color: var(--ink); font-weight: 700; font-stretch: 112%; }
+
+.btn--small { font-size: 14px; padding: 8px 14px; }
+.code-input { font-family: var(--mono) !important; letter-spacing: .08em; text-transform: uppercase; }
+
+/* /family/ */
+.new-code {
+  border: 1px dashed var(--ink); border-radius: 4px; padding: 16px; max-width: 480px;
+}
+.new-code:focus { outline: 2px solid var(--ink); outline-offset: 3px; }
+.new-code-text { font-family: var(--mono); font-weight: 500; font-size: clamp(20px, 5.5vw, 28px); letter-spacing: .06em; color: var(--ink); margin: 0; }
+.codes-title { font-size: 20px; margin-top: 12px; }
+.codes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-width: 480px; }
+.codes li {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  border-top: 1px solid var(--line); padding-top: 8px;
+  font-family: var(--mono); font-size: 14px; color: var(--dim);
+}
+
 /* /how/: three steps */
 .how-steps {
   list-style: none; margin: 0; padding: 0;

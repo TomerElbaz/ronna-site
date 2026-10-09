@@ -1,4 +1,4 @@
-// Browser self-test for ronna.mom. Starts tests/serve.py (which applies
+// Browser self-test for ronna.mom. Starts tests/dev_server.mjs (which applies
 // public/_headers and public/_redirects), then loads every page in Chromium
 // at 320, 390 and 1280 px and fails if:
 //   - any request leaves the site, or a same-site request fails,
@@ -36,7 +36,6 @@
 // the repo root:
 //   node tests/browser_check.mjs [screenshot-dir]
 // If Playwright is not resolvable from here, point PLAYWRIGHT_MODULE at it.
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -45,15 +44,21 @@ import path from 'node:path';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const here = path.dirname(fileURLToPath(import.meta.url));
 const shots = process.argv[2];
-const PORT = 8787;
-const BASE = `http://127.0.0.1:${PORT}`;
-const PAGES = ['/', '/what/', '/how/', '/privacy/', '/terms/', '/confirm/', '/invite/', '/off/', '/no-such-page'];
+const PAGES = ['/', '/what/', '/how/', '/privacy/', '/terms/', '/confirm/', '/invite/', '/off/', '/family/', '/no-such-page'];
 const BUDGET = 150 * 1024;
 const AXE = readFileSync(process.env.AXE_PATH || createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 const AXE_FAIL = new Set(['serious', 'critical']);
 const WIDTHS = [[320, 640, 'w320'], [390, 844, 'w390'], [1280, 900, 'desktop']];
 
-const server = spawn('python3', [path.join(here, 'serve.py'), String(PORT)], { stdio: 'ignore' });
+// The site and the waitlist Worker, in this process (tests/dev_server.mjs).
+const { startServer } = await import('./dev_server.mjs');
+const harness = await import('./worker/harness.mjs');
+const site = await startServer({ port: 0, emulateAccess: false, minReplyMs: 30, trustTestIp: true });
+const BASE = `http://127.0.0.1:${site.port}`;
+let ipSeq = 0;
+const freshIp = () => `10.99.${Math.floor(++ipSeq / 250)}.${ipSeq % 250}`;
+const newContext = (opts = {}) => browser.newContext({ ...opts, extraHTTPHeaders: { 'X-Test-Client-IP': freshIp(), ...(opts.extraHTTPHeaders || {}) } });
+let browser;
 const problems = [];
 const weights = [];
 const axeNotes = [];
@@ -62,9 +67,6 @@ const fail = (msg) => problems.push(msg);
 const visible = (page, sel) => page.locator(sel).first().isVisible();
 
 try {
-  for (let i = 0; i < 50; i++) {
-    try { await fetch(BASE + '/'); break; } catch { await new Promise((r) => setTimeout(r, 100)); }
-  }
 
   for (const f of ['/favicon.svg', '/favicon.ico', '/icon-32.png', '/icon-180.png', '/icon-512.png', '/apple-touch-icon.png']) {
     const r = await fetch(BASE + f);
@@ -76,11 +78,11 @@ try {
     if (r.status !== 301 || r.headers.get('location') !== '/') fail(`${old} should 301 to /, got ${r.status} ${r.headers.get('location')}`);
   }
 
-  const browser = await chromium.launch();
+  browser = await chromium.launch();
 
   // Page-weight budget: a fresh context per page, so nothing is cached.
   for (const p of PAGES) {
-    const ctx = await browser.newContext();
+    const ctx = await newContext();
     const page = await ctx.newPage();
     const bodies = [];
     page.on('response', (r) => bodies.push(r.body().then((b) => b.length, () => 0)));
@@ -95,7 +97,7 @@ try {
 
   // Accessibility (issue #14): axe-core on every page and every state.
   {
-    const ctx = await browser.newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
+    const ctx = await newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
     const axeRun = async (page, label) => {
       if (!(await page.evaluate(() => !!window.axe))) await page.addScriptTag({ content: AXE });
       const r = await page.evaluate(() => window.axe.run(document));
@@ -131,7 +133,7 @@ try {
 
   // Keyboard order and visible focus on the form (issue #14).
   {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const ctx = await newContext({ viewport: { width: 1280, height: 900 } });
     const here = (page) => page.evaluate(() => {
       const el = document.activeElement;
       const s = getComputedStyle(el);
@@ -172,6 +174,7 @@ try {
       // Type and submit with Enter: focus moves to the confirm step, then Tab reaches "Send the link again".
       await page.keyboard.type('test@example.com');
       await page.keyboard.press('Enter');
+      await page.waitForSelector('[data-step=confirm]:not([hidden])', { timeout: 5000 }).catch(() => {});
       at = await here(page);
       if (at.name !== 'confirm-step') fail(`keyboard ${p}: after submit focus is on ${at.name}, not the confirm step`);
       await page.keyboard.press('Tab');
@@ -181,8 +184,172 @@ try {
     }
     await ctx.close();
   }
+  // ---------- End to end, against the real Worker (rules 69, 72, 74) ----------
+  {
+    const t0 = { t: Date.now() };
+    const urls = [];          // every request URL the browser makes in these flows
+    const secrets = [];       // codes, tokens and emails that must never appear in a URL (rule 72.3)
+    const watch = (page) => page.on('request', (r) => urls.push(r.url()));
+    const lastMailTo = (email) => [...site.mail].reverse().find((m) => m.to === email);
+    const axeOn = async (page, label) => {
+      const r = await page.evaluate(() => window.axe.run(document));
+      for (const v of r.violations) if (AXE_FAIL.has(v.impact)) fail(`axe ${label}: [${v.impact}] ${v.id} at ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`);
+      axeRuns.push(r.passes.length);
+    };
+    const cspWatch = async (page) => page.addInitScript(() => {
+      window.__cspBlocked = [];
+      document.addEventListener('securitypolicyviolation', (e) => window.__cspBlocked.push(`${e.effectiveDirective} blocked ${e.blockedURI || '(inline)'}`));
+    });
+    const cspCheck = async (page, label) => {
+      for (const b of await page.evaluate(() => window.__cspBlocked || [])) fail(`e2e ${label}: CSP ${b}`);
+    };
+    const open = async (ctx) => {
+      const page = await ctx.newPage();
+      watch(page);
+      await cspWatch(page);
+      await page.addInitScript({ content: AXE }); // init scripts run under any CSP; the page's own policy stays on
+      page.on('pageerror', (e) => fail(`e2e: script error ${e}`));
+      return page;
+    };
+
+    // 1. Signup, confirm with a click, place shown; then one-click delete.
+    {
+      const ctx = await newContext({ viewport: { width: 390, height: 844 } });
+      const page = await open(ctx);
+      const email = 'e2e-person@example.com';
+      secrets.push(email);
+      await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+      await page.fill('#waitlist-email', email);
+      await page.click('form[data-waitlist] button[type=submit]');
+      await page.waitForSelector('[data-step=confirm]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e signup: no confirm step'));
+      const mail = lastMailTo(email);
+      if (!mail) fail('e2e signup: no confirm email captured');
+      const token = harness.tokenFrom(mail, 'confirm');
+      const del = harness.tokenFrom(mail, 'delete');
+      secrets.push(token, del);
+      await page.goto(`${BASE}/confirm/#t=${token}`, { waitUntil: 'networkidle' });
+      if (page.url().includes('#')) fail('e2e confirm: token left in the address bar');
+      if (!(await visible(page, '[data-step=ready]'))) fail('e2e confirm: no Confirm button');
+      await page.click('[data-confirm-button]');
+      await page.waitForSelector('[data-step=done]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e confirm: not confirmed'));
+      if ((await page.locator('h1').textContent()).trim() !== "You're on the list") fail('e2e confirm: heading is not "You\'re on the list"');
+      if (!/^#\d+$/.test((await page.locator('[data-place]').textContent()).trim())) fail('e2e confirm: no place number');
+      await axeOn(page, '/confirm/ (done)');
+      await cspCheck(page, '/confirm/');
+      if (shots) await page.screenshot({ path: path.join(shots, 'e2e_confirm_done.png'), fullPage: true });
+      await page.goto(`${BASE}/off/#d=${del}`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-step=deleted]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e delete: not deleted'));
+      if (page.url().includes('#')) fail('e2e delete: token left in the address bar');
+      if (site.env.DB.rows('SELECT * FROM signups WHERE email = ?', email).length) fail('e2e delete: row still there');
+      await axeOn(page, '/off/ (deleted)');
+      await cspCheck(page, '/off/');
+      // /off/ without a token: the request form, same answer for any address
+      await page.goto(`${BASE}/off/`, { waitUntil: 'networkidle' });
+      await page.fill('#off-email', 'not-on-the-list@example.com');
+      await page.click('form[data-off-form] button[type=submit]');
+      await page.waitForSelector('[data-step=sent]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e off: request form gave no answer'));
+      await ctx.close();
+    }
+
+    // 2. Family page behind Access: enrol, name, mint (shown once), revoke, cap.
+    let code = null;
+    {
+      const ownerSub = 'e2e-owner-sub';
+      const operatorJwt = await harness.signJwt(harness.accessClaims('operator', 'tomer-sub', Date.now()));
+      const familyId = (await harness.call(site.env, '/api/operator/family/create', {}, { jwt: operatorJwt })).body.familyId;
+      const enrolCode = (await harness.call(site.env, '/api/operator/family/enrolment-code', { familyId }, { jwt: operatorJwt })).body.code;
+      const ownerJwt = await harness.signJwt(harness.accessClaims('family', ownerSub, Date.now()));
+      const ctx = await newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { 'Cf-Access-Jwt-Assertion': ownerJwt } });
+      const page = await open(ctx);
+      await page.goto(BASE + '/family/', { waitUntil: 'networkidle' });
+      const notice = await page.locator('[data-access-notice]').innerText();
+      if (!/Cloudflare/.test(notice) || !/sign-in email/.test(notice) || !/a day/.test(notice)) fail(`e2e family: rule 74.2 notice missing: ${notice}`);
+      await page.waitForSelector('[data-step=enrol]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e family: no enrol step'));
+      await page.fill('#enrol-code', enrolCode.toLowerCase());
+      await page.click('form[data-enrol-form] button[type=submit]');
+      await page.waitForSelector('[data-step=family]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e family: enrol failed'));
+      await page.click('[data-mint]');
+      await page.waitForSelector('[data-mint-note]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e family: minting without a name was not refused'));
+      await page.fill('#family-name', 'Dana Smith');
+      await page.click('form[data-name-form] button[type=submit]');
+      await page.waitForSelector('#name-error:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e family: a surname was accepted'));
+      await page.fill('#family-name', "O'Neil");
+      await page.click('form[data-name-form] button[type=submit]');
+      await page.waitForFunction(() => document.querySelector('[data-family-name]').textContent === "O'Neil", null, { timeout: 5000 }).catch(() => fail('e2e family: name not saved'));
+      await page.click('[data-mint]');
+      await page.waitForSelector('[data-new-code]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e family: no code shown'));
+      code = (await page.locator('[data-new-code-text]').textContent()).trim();
+      if (!/^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/.test(code)) fail(`e2e family: code shape ${code}`);
+      secrets.push(code, code.replace(/-/g, ''), code.toLowerCase(), code.replace(/-/g, '').toLowerCase());
+      if (!/Unused/.test(await page.locator('[data-codes]').innerText())) fail('e2e family: new code not listed as unused');
+      await axeOn(page, '/family/ (code shown)');
+      if (shots) await page.screenshot({ path: path.join(shots, 'e2e_family.png'), fullPage: true });
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-step=family]:not([hidden])', { timeout: 5000 });
+      if ((await page.content()).includes(code) || (await page.content()).includes(code.replace(/-/g, ''))) fail('e2e family: code shown again after reload');
+      // revoke one, then fill to five and see the sixth refused
+      const spare = (await harness.call(site.env, '/api/family/mint', {}, { jwt: ownerJwt })).body;
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-step=family]:not([hidden])', { timeout: 5000 });
+      const before = await page.locator('[data-codes] button').count();
+      await page.locator('[data-codes] button').last().click();
+      await page.waitForFunction((n) => document.querySelectorAll('[data-codes] button').length === n - 1, before, { timeout: 5000 }).catch(() => fail('e2e family: revoke did not update the list'));
+      for (let i = 0; i < 4; i++) await harness.call(site.env, '/api/family/mint', {}, { jwt: ownerJwt });
+      await page.click('[data-mint]');
+      await page.waitForFunction(() => /5 live codes/.test(document.querySelector('[data-mint-note]').textContent), null, { timeout: 5000 }).catch(() => fail('e2e family: sixth code not refused'));
+      void spare;
+      await cspCheck(page, '/family/');
+      await ctx.close();
+    }
+
+    // 3. Invite: /invite/#code=…, "Invited by" + the name only, join, confirm. No code in any URL.
+    {
+      const ctx = await newContext({ viewport: { width: 390, height: 844 } });
+      const page = await open(ctx);
+      const email = 'e2e-invitee@example.com';
+      secrets.push(email);
+      await page.goto(`${BASE}/invite/#code=${code}`, { waitUntil: 'networkidle' });
+      if (page.url().includes('#')) fail('e2e invite: code left in the address bar');
+      await page.waitForSelector('[data-step=join]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e invite: valid code not accepted'));
+      const shown = (await page.locator('.invited').innerText()).trim();
+      if (shown !== "Invited by O'Neil") fail(`invite-shows-only-first-name: shows "${shown}"`);
+      if ((await page.locator('[data-invited-by]').innerHTML()) !== 'O\'Neil') fail('e2e invite: the name was not inserted as text');
+      const pageText = await page.locator('main').innerText();
+      if (/fam_|code_|@/.test(pageText.replace(/ronna\.mom\/off/g, ''))) fail('e2e invite: page shows more than the first name');
+      if (!/doesn't move you up the list/i.test(pageText)) fail('e2e invite: referral line missing');
+      await axeOn(page, '/invite/ (join)');
+      if (shots) await page.screenshot({ path: path.join(shots, 'e2e_invite_join.png'), fullPage: true });
+      await page.fill('#invite-email', email);
+      await page.click('form[data-invite-join] button[type=submit]');
+      await page.waitForSelector('[data-step=sent]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e invite: redeem gave no answer'));
+      const token = harness.tokenFrom(lastMailTo(email), 'confirm');
+      secrets.push(token);
+      await page.goto(`${BASE}/confirm/#t=${token}`, { waitUntil: 'networkidle' });
+      await page.click('[data-confirm-button]');
+      await page.waitForSelector('[data-step=done]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e invite: confirm failed'));
+      const row = site.env.DB.rows('SELECT invited_by_family_id FROM signups WHERE email = ?', email)[0];
+      if (!row || !row.invited_by_family_id) fail('e2e invite: invitee not marked invited-by');
+      // the same code again, typed this time: one reply for a bad code
+      await page.goto(`${BASE}/invite/`, { waitUntil: 'networkidle' });
+      await page.fill('#invite-code', code.toLowerCase().replace(/-/g, ' '));
+      await page.click('form[data-code-form] button[type=submit]');
+      await page.waitForSelector('[data-bad]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e invite: used code not refused'));
+      if ((await page.locator('[data-bad]').innerText()).trim() !== "This invite isn't valid.") fail('e2e invite: bad-code reply wording');
+      await axeOn(page, '/invite/ (bad code)');
+      await cspCheck(page, '/invite/');
+      await ctx.close();
+    }
+
+    // invite-code-never-in-url (rule 72.3), and no token or email either.
+    for (const u of urls) {
+      const lower = decodeURIComponent(u).toLowerCase();
+      for (const sec of secrets) if (sec && lower.includes(sec.toLowerCase())) fail(`invite-code-never-in-url: a request URL carried a secret: ${u.slice(0, 60)}…`);
+    }
+    if (urls.length < 20) fail(`e2e: too few requests recorded (${urls.length}); the URL check would prove nothing`);
+  }
+
   for (const [width, height, tag] of WIDTHS) {
-    const ctx = await browser.newContext({ viewport: { width, height } });
+    const ctx = await newContext({ viewport: { width, height } });
     for (const p of PAGES) {
       const page = await ctx.newPage();
       const is404 = p === '/no-such-page';
@@ -192,6 +359,7 @@ try {
       page.on('console', (m) => {
         if (m.type() !== 'error') return;
         if (is404 && /status of 404/.test(m.text())) return;
+        if (p === '/family/' && /status of 403/.test(m.text())) return; // signed out: the family page shows its "denied" state
         fail(`${tag} ${p}: console error ${m.text()}`);
       });
 
@@ -258,12 +426,14 @@ try {
         const heads = (await page.locator('main h2').allTextContents()).map((t) => t.trim());
         if (heads.join('|') !== 'What we collect|Why|How to leave the list|Never') fail(`${tag} /privacy/: sections are ${heads.join(' | ')}`);
       }
-      if (p === '/confirm/') {
-        if ((await page.locator('h1').textContent()).trim() !== "You're on the list") fail(`${tag} /confirm/: heading wrong`);
-        if (!(await visible(page, '.place-num'))) fail(`${tag} /confirm/: place number placeholder missing`);
-        if (await page.locator('script').count()) fail(`${tag} /confirm/: page runs a script`);
-        if (res.headers()['cache-control'] !== 'no-store') fail(`${tag} /confirm/: not no-store`);
+      if (['/confirm/', '/invite/', '/off/', '/family/'].includes(p)) {
+        if (res.headers()['cache-control'] !== 'no-store') fail(`${tag} ${p}: not no-store`);
+        const rp = (res.headers()['referrer-policy'] || '').split(',').map((x) => x.trim());
+        if (rp.at(-1) !== 'no-referrer') fail(`${tag} ${p}: Referrer-Policy ends with ${rp.at(-1)}, want no-referrer`);
+        if ((await page.getAttribute('meta[name=referrer]', 'content')) !== 'no-referrer') fail(`${tag} ${p}: no no-referrer meta`);
       }
+      if (p === '/confirm/' && !(await visible(page, '[data-step=none]'))) fail(`${tag} /confirm/: without a token it should ask to open the email link`);
+      if (p === '/family/' && !(await visible(page, '[data-step=denied]'))) fail(`${tag} /family/: signed out, it should show the denied state`);
 
       if (is404) {
         if ((await page.locator('.egg').textContent()).trim() !== '1e27') fail(`${tag} 404: 1e27 missing`);
@@ -287,7 +457,7 @@ try {
         await page.click('label[for=aud-home]');
         if (!(await visible(page, 'h1 [data-aud=home]'))) fail(`${tag} switch: Home copy did not come back`);
 
-        // Steps, with JS. Nothing may leave the page at any point.
+        // Steps, with JS. The only request is a same-origin POST to /api/signup.
         const sent = [];
         page.on('request', (r) => sent.push(`${r.method()} ${r.url()}`));
         const before = page.url();
@@ -296,21 +466,30 @@ try {
         if (!(await visible(page, '[data-step=form]'))) fail(`${tag} waitlist: empty email left the form`);
         await page.fill('#waitlist-email', 'test@example.com');
         await page.click('form[data-waitlist] button[type=submit]');
-        await page.waitForTimeout(300);
+        await page.waitForSelector('[data-step=confirm]:not([hidden])', { timeout: 5000 }).catch(() => {});
         if (!(await visible(page, '[data-step=confirm]')) || (await visible(page, '[data-step=form]'))) fail(`${tag} waitlist: confirm step not shown`);
         if ((await page.locator('[data-step=confirm] h2').textContent()).trim() !== 'Check your email.') fail(`${tag} waitlist: confirm heading wrong`);
         if ((await page.inputValue('#waitlist-email')) !== '') fail(`${tag} waitlist: email kept in the page after submit`);
         if ((await page.evaluate(() => document.activeElement?.dataset?.step)) !== 'confirm') fail(`${tag} waitlist: focus did not move to the confirm step`);
         await page.click('[data-resend]');
+        await page.waitForSelector('[data-resent]:not([hidden])', { timeout: 5000 }).catch(() => {});
         if (!(await visible(page, '[data-resent]'))) fail(`${tag} waitlist: "Send the link again" shows nothing`);
         if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_')}confirm.png`), fullPage: false });
-        if (page.url() !== before || sent.length) fail(`${tag} waitlist: something was sent: ${sent.join(', ') || page.url()}`);
+        const unexpected = sent.filter((x) => x !== `POST ${BASE}/api/signup`);
+        if (page.url() !== before || unexpected.length || sent.length !== 2) fail(`${tag} waitlist: requests were ${sent.join(', ') || 'none'} (url ${page.url()})`);
+        // Rule 69.8: the two-line notice sits above the button.
+        const keep = await page.evaluate(() => {
+          const k = document.querySelector('form[data-waitlist] [data-keep]');
+          const b = document.querySelector('form[data-waitlist] button[type=submit]');
+          return k && b ? { lines: k.innerHTML.split(/<br\s*\/?>/i).filter((x) => x.trim()).length, before: !!(k.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING), text: k.textContent } : null;
+        });
+        if (!keep || keep.lines !== 2 || !keep.before || !/keep only your email/i.test(keep.text) || !/delete/i.test(keep.text)) fail(`${tag} ${p}: notice above the button wrong: ${JSON.stringify(keep)}`);
 
         // The place on the list is /confirm/ only (CPO, issue #8).
         if (await page.locator('[data-step=place], #on-the-list').count()) fail(`${tag} ${p}: in-page place step should be gone`);
 
         // Without JS: the switch still works (CSS only) and the form sends nothing.
-        const noJs = await browser.newContext({ javaScriptEnabled: false, viewport: { width, height } });
+        const noJs = await newContext({ javaScriptEnabled: false, viewport: { width, height } });
         const p2 = await noJs.newPage();
         await p2.goto(BASE + p, { waitUntil: 'networkidle' });
         await p2.click('label[for=aud-business]');
@@ -331,7 +510,8 @@ try {
   }
   await browser.close();
 } finally {
-  server.kill();
+  if (browser) await browser.close().catch(() => {});
+  await site.close();
 }
 
 if (problems.length) {

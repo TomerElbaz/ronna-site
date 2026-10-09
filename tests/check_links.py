@@ -31,6 +31,7 @@ EXPECTED_ORPHANS = {
     "404.html": "served by Pages for unknown paths",
     "confirm/index.html": "opened from the confirm email's link",
     "invite/index.html": "opened from an invite link",
+    "family/index.html": "family owners reach it through Cloudflare Access",
 }
 
 SHARE_URL_TAGS = {"og:url", "og:image", "twitter:image"}

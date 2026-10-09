@@ -1,0 +1,42 @@
+# ronna-site-signup: the waitlist Worker for ronna.mom (CISO rules 69, 72, 74).
+# NOT DEPLOYED. Nothing here goes live until the CPO says so and the CISO has
+# approved the SES key. The values marked SET-AT-SETUP are created by Tomer in
+# the Cloudflare dashboard when that happens; none of them is a secret.
+#
+# Rule 69.1: this Worker's only binding is its own D1 database below. It has
+# no binding of any kind to any MOM product resource, and the test
+# `no-mom-binding` fails the build if one is added.
+
+name = "ronna-site-signup"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Reachable only through ronna.mom; the default Cloudflare subdomain is off.
+workers_dev = false
+routes = [
+  { pattern = "ronna.mom/api/*", zone_name = "ronna.mom" },
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ronna-site-waitlist"
+database_id = "SET-AT-SETUP"
+
+# Daily cleanup (rule 69.3, 72.6, 69.6): pending rows after 7 days, expired
+# tokens, lapsed reservations, yesterday's salt and counters.
+[triggers]
+crons = ["17 3 * * *"]
+
+[vars]
+SITE_ORIGIN = "https://ronna.mom"
+MIN_REPLY_MS = "400"
+SES_REGION = "eu-west-1"
+MAIL_FROM = "RonnaOps <list@mail.ronna.mom>"
+ACCESS_TEAM_DOMAIN = "SET-AT-SETUP.cloudflareaccess.com"
+FAMILY_AUD = "SET-AT-SETUP"
+OPERATOR_AUD = "SET-AT-SETUP"
+
+# Secrets, set with `wrangler secret put` only after the CISO's yes (rule 69.5).
+# Never written in this file or anywhere in the repo:
+#   SES_ACCESS_KEY_ID
+#   SES_SECRET_ACCESS_KEY

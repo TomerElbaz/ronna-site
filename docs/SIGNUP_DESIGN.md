@@ -1,11 +1,10 @@
 # Waitlist signup design — FOR CISO
 
-Status: **design only, to meet CISO rule 69 (9 Oct 2026, 03:26) and, for
-invitations, CISO rule 72 (9 Oct 2026, 04:30).**
-Nothing here is built. The site today collects nothing: the form's action is
-empty, its submit is held in the browser, and the Content-Security-Policy
-blocks form posts and all outside connections. Nothing in this design is
-switched on until the CISO approves it in the CPO chat.
+Status: **cleared by the CISO with changes (rule 74, 9 Oct 2026, 05:28) and
+built on the branch in `worker/`, with every point of rules 69, 72 and 74 as a
+hard test (rule 70). Not deployed; no SES key exists.** §13 records rule 74's
+changes and how each is built. Earlier sections are the design as cleared; where
+§13 differs, §13 is what was built.
 
 Author: Web build desk (Claude Code, cloud). Lives in `docs/`, which
 Cloudflare Pages does not publish.
@@ -613,3 +612,59 @@ Each of these fails the build when its rule breaks:
 5. **Display-name rule:** one word, letters, `-` and `'`, max 20. Is that
    enough to keep surnames out, or should Tomer review names before they
    show?
+
+---
+
+## 13. Rule 74, and what was built
+
+Built in `worker/` (Worker, schema, config) and wired into the pages
+(`public/assets/site.js`, `/confirm/`, `/off/`, `/invite/`, `/family/`). Tests:
+`tests/worker/rule69.test.mjs`, `tests/worker/rule72.test.mjs` (Worker) and
+`tests/browser_check.mjs` (pages, end to end). Not deployed; no SES key.
+
+| # | Rule 74 | Built as | Test |
+|---|---|---|---|
+| 1 | Owner link in `family_owners (family_id, owner_access_id)`, at most 2 per family; the Access user ID from the verified JWT's `sub`; enrolment codes in rule 72's format, hash only, 7 days, single use, handed over by Tomer himself, never emailed | Table as named, `owner_access_id` unique. `/api/family/enrol` links the signed-in `sub` in one transaction, which checks the code, its expiry, an active family and fewer than 2 owners, then deletes the code. Tomer gets the enrolment code once from `/api/operator/family/enrolment-code`; nothing emails it. | `74.1 enrolment codes…`, `74.1: the owner link is the verified JWT's sub…` |
+| 1 | Separate Access applications for family and operator routes, each checking its own audience tag; an operator token refused on a family route and the reverse | `verifyAccess(request, env, "family" or "operator")` accepts only `FAMILY_AUD` or only `OPERATOR_AUD`, as well as checking the signature, issuer, expiry and `sub`. | `74.1: an operator token is refused on a family route, and a family token on an operator route`; `mint-requires-access-jwt` |
+| 1 | When a family leaves, its owner rows are erased | `/api/operator/family/leave` deletes `family_owners` and `enrolment_codes` rows for it, in the same transaction as the rule 72.11 steps. | `family-leave-erases` |
+| 2 | Zero Trust Free (Access logs 24 h); the family page says Cloudflare logs the sign-in email for a day | `/family/` opens with that notice. The plan is set at setup (README). | browser: `e2e family: rule 74.2 notice` |
+| 3 | 200 redeems a day site-wide; 20 mints a day per owner | `LIMITS.redeemsPerDay = 200`, `LIMITS.mintsPerOwnerDay = 20` (`worker/src/limits.js`). | `global-cap`, `74.3: 20 mints a day per owner` |
+| 4 | A reserved code revoked before confirmation: the person joins, without the mark | At confirm, the code is spent only if it is still `reserved` for this signup; otherwise the mark is cleared in the same batch. | `74.4: a reserved code revoked before confirmation…` |
+| 5 | Display name: one word, letters plus `-` and `'`, max 20, inserted as text | `validDisplayName` (Unicode letters, so accented names work); pages insert it with `textContent`. | `display names…`; browser `invite-shows-only-first-name` (checks `innerHTML` is the bare name) |
+| 6 | Operator application lets in Tomer only, with two-factor sign-in; the lockout stays invisible | Access configuration at setup (README, "When the CPO says go"); the Worker refuses any token without the operator audience. A locked hash gets the bad-code reply, with the same status, body and timing. | `bad-code-one-reply` (includes the locked case) |
+
+**Choices made while building, for the CISO to see:**
+
+1. **Lockout (72.8).** Ten failures in a clock hour lock the salted IP hash
+   for a **full hour from the tenth failure**. Ten failures at 10:55 therefore
+   still lock at 11:05, after the hourly allowance has reset. The lock is a
+   counter row whose value is the time it ends. Test: `the lock lasts a full
+   hour from the tenth failure, past the hourly reset`.
+2. **Tokens and codes in hashes:** `SHA-256("ronna-token:" + token)` and
+   `SHA-256("ronna-code:" + normalised code)`. The prefixes keep the two kinds
+   apart.
+3. **The "same answer" (69.4)** is the JSON reply `{"ok": true}` with status 202,
+   held to a fixed time floor (400 ms). The page's words for it stay the CPO's
+   quoted "Check your email." The CISO's text says "Check your inbox"; the
+   CPO and CBO settle the words.
+4. **`List-Unsubscribe` header (§11.4):** not sent, because that open point
+   was not ruled on. Every email carries the one-click delete link in its body
+   (69.5).
+5. **The human-check slot** stays an empty box; no Turnstile. Rule 69.6 says
+   a check is added only if needed.
+6. **Delete link (69.9):** `/off/#d=…` deletes as soon as the page opens, which
+   is one click from the email. A pending invitee who deletes releases their
+   reserved code.
+7. **Display names** accept any Unicode letters (for example "Zoë"), not only
+   A to Z.
+8. **Send** happens after the reply (`waitUntil`), so a slow SES call can't
+   change the reply time. Without the secrets, `send()` logs `send.disabled`
+   and sends nothing.
+
+**How the tests prove they bite:** each of 15 deliberate breaks to the
+Worker was caught by the test named for the rule it broke. The breaks were: a
+sixth live code allowed; the reserve guard loosened; an email logged; a code
+read from the URL; expired codes accepted; a reusable confirm token; 48-hour
+tokens; no lockout; a family's name kept on leaving; operator tokens on
+family routes; a signup limit of 50; three owners; the raw IP stored; the
+bad-code timing floor skipped; and a revoked code still spent.

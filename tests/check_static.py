@@ -10,7 +10,8 @@ Fails if anything in the published tree:
   - has an image without alt, or a page without exactly one h1,
   - (except 404.html) lacks its Open Graph / Twitter share tags, or shares an
     image other than the tile (icon-512.png),
-  - gives the waitlist form an action or a network call,
+  - gives the waitlist form an action, or lets a script reach anything but
+    this site's own /api/ (one fetch, inside post(), to literal "/api/..." paths),
   - drops the guards in _headers (CSP form-action 'none', X-Robots-Tag noindex),
   - strays from the DRAFT FOR CISO headers (issue #15): CSP with no outside
     host and frame-ancestors 'none', nosniff, Referrer-Policy
@@ -39,9 +40,11 @@ ALLOWED_URLS = {"http://www.w3.org/2000/svg"}
 # Our own host, for the absolute URLs that Open Graph / Twitter tags require.
 OWN_ORIGIN = "https://ronna.mom/"
 URL_RE = re.compile(r"""(?:https?:)?//[A-Za-z0-9.-]+\.[A-Za-z]{2,}[^\s"'<>)]*""")
-BACKEND_RE = re.compile(r"workers\.dev|\bworker\b", re.I)
+# The MOM product's backend: its Worker and any workers.dev host. The site's own
+# waitlist Worker (worker/, rules 69 and 74) is not the MOM Worker.
+BACKEND_RE = re.compile(r"workers\.dev|\bMOM(?:'s)?(?: product's)? Worker\b|mom-tenant|tenant-0", re.I)
 SECRET_RE = re.compile(
-    r"(api[_-]?key|secret|bearer\s+[a-z0-9]|token\s*[:=]|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|-----BEGIN)",
+    r"(api[_-]?key\s*[:=]|secret\s*[:=]\s*[\"']|bearer\s+[a-z0-9]{8}|token\s*[:=]\s*[\"'][A-Za-z0-9_\-]{16,}|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|-----BEGIN)",
     re.I,
 )
 NETWORK_JS_RE = re.compile(r"\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|navigator\.sendBeacon|\.submit\(\))", re.I)
@@ -130,8 +133,18 @@ def main():
             problems.append(f"{rel(path)}: mentions a backend host")
         if not is_license and SECRET_RE.search(text):
             problems.append(f"{rel(path)}: looks like a secret: {SECRET_RE.search(text).group(0)}")
-        if ext == ".js" and NETWORK_JS_RE.search(text):
-            problems.append(f"{rel(path)}: script makes or allows a network call: {NETWORK_JS_RE.search(text).group(0)}")
+        if ext == ".js":
+            # The only network use allowed: one fetch inside post(), and post() called
+            # only with literal same-origin "/api/..." paths (the waitlist Worker).
+            other = [m.group(0) for m in NETWORK_JS_RE.finditer(text) if m.group(0) != "fetch"]
+            if other:
+                problems.append(f"{rel(path)}: script uses {other[0]}")
+            fetches = re.findall(r"\bfetch\(([^,)]*)", text)
+            if fetches and fetches != ["path"]:
+                problems.append(f"{rel(path)}: fetch must appear once, as fetch(path, ...) inside post(): {fetches}")
+            for target in re.findall(r"\bpost\(([^,)]*)", text):
+                if not re.fullmatch(r'"/api/[a-z/-]+"', target.strip()) and target.strip() != "path":
+                    problems.append(f"{rel(path)}: post() to {target.strip()}, not a literal /api/ path")
 
         if ext == ".html":
             p = Page()
@@ -148,7 +161,7 @@ def main():
                 problems.append(f"{rel(path)}: {p.h1} <h1> elements, want 1")
             if p.imgs_without_alt:
                 problems.append(f"{rel(path)}: {p.imgs_without_alt} <img> without alt")
-            if rel(path) != "404.html":
+            if rel(path) not in ("404.html", "family/index.html"):  # 404 and the private family page carry no share tags
                 for key in ("og:title", "og:description", "og:url", "og:image", "twitter:card", "twitter:title", "twitter:description", "twitter:image"):
                     if not p.share.get(key):
                         problems.append(f"{rel(path)}: share tag {key} missing")
@@ -157,7 +170,7 @@ def main():
                         problems.append(f"{rel(path)}: {key} is {p.share[key]}, want the tile {OWN_ORIGIN}icon-512.png")
             for what in p.inline:
                 problems.append(f"{rel(path)}: CSP would block {what}")
-            if rel(path) in ("confirm/index.html", "invite/index.html") and p.referrer != "no-referrer":
+            if rel(path) in ("confirm/index.html", "invite/index.html", "off/index.html", "family/index.html") and p.referrer != "no-referrer":
                 problems.append(f"{rel(path)}: token page lost <meta name=referrer content=no-referrer>")
             for form in p.forms:
                 if form.get("action", "") != "":

@@ -22,6 +22,8 @@
   <meta name="twitter:description" content="[COPY] Share description for Take me off the list.">
   <meta name="twitter:image" content="https://ronna.mom/icon-512.png">
   <meta name="twitter:image:alt" content="RonnaOps mark: a square tile with the letter R">
+  <!-- Opened from links that may carry a token, so this page sends no referrer at all (rule 72.3, DRAFT FOR CISO issue #15). -->
+  <meta name="referrer" content="no-referrer">
   <meta name="theme-color" content="#171A20">
   <link rel="preload" href="/assets/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -30,6 +32,7 @@
   <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="/icon-180.png">
   <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -45,17 +48,42 @@
   </header>
 
   <!--
-    PLACEHOLDER. "Take me off the list" from the waitlist footer. No form
-    until the list is live and the CISO has cleared how removal works; this
-    page reads nothing from the URL and sends nothing.
+    TAKE ME OFF THE LIST (rule 69.9). Every email carries
+    /off/#d=<delete token>: opening it removes the address at once (one
+    click). Without a token, the form asks /api/delete-request to email a
+    fresh link; the reply is the same for every address (rule 69.4).
   -->
   <main id="main">
-    <section class="hero">
+    <section class="hero" data-off>
       <div class="wrap stack">
         <p class="eyebrow"><span class="mom">MOM</span> waitlist</p>
-        <h1>Take me off the list</h1>
-        <p class="lede">[COPY] One line on how to leave the list once it is open.</p>
-        <a class="btn" href="/">Back to home</a>
+        <h1 data-heading>Take me off the list</h1>
+        <div class="step stack" data-step="form" data-title="Take me off the list">
+          <p class="lede">[COPY] Enter your email and we'll send a link. One click on it removes the address at once.</p>
+          <form class="form" action="" method="post" data-off-form novalidate>
+            <div class="field">
+              <label for="off-email">Email</label>
+              <input id="off-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="off-error">
+            </div>
+            <button class="btn" type="submit">Send me the link</button>
+            <p class="notice" id="off-error" role="alert" hidden>[COPY] Enter an email address.</p>
+          </form>
+          <p class="fine">[COPY] Or reply to any email from us asking to leave; we remove the address by hand within 7 days.</p>
+        </div>
+        <div class="step stack" data-step="sent" data-title="Check your email." tabindex="-1" hidden>
+          <p class="lede">[COPY] If that address is on the list, we've sent a link. One click on it removes the address.</p>
+        </div>
+        <div class="step stack" data-step="working" data-title="Removing the address" tabindex="-1" hidden>
+          <p class="lede">One moment.</p>
+        </div>
+        <div class="step stack" data-step="deleted" data-title="You're off the list" tabindex="-1" hidden>
+          <p class="lede">[COPY] The address is gone from the list.</p>
+          <a class="btn" href="/">Back to home</a>
+        </div>
+        <div class="step stack" data-step="bad" data-title="That link didn't work" tabindex="-1" hidden>
+          <p class="lede">[COPY] It may have been used already. Ask for a new one below.</p>
+          <a class="btn" href="/off/">Take me off the list</a>
+        </div>
       </div>
     </section>
   </main>
