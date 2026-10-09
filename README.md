@@ -103,6 +103,25 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
   boundary rule); every focus stop shows a white outline; Tab starts at a
   skip link.
 
+## Hero photos
+
+The main page's hero carries two photos from Unsplash, under the Unsplash
+License (CPO order, 9 Oct; Tomer's word 15:02): **Home**
+(unsplash.com/photos/IHxTr8c_yh8, a house at night) and **Business**
+(unsplash.com/photos/NWOyowI7t44, a lit storefront at night).
+
+- **Self-hosted, never hotlinked:** `public/assets/hero/{home,business}-{2000,1000}.webp`. The CSP keeps `img-src 'self'`.
+- **Processed:** each photo was converted to sRGB, then all metadata was stripped (EXIF, XMP and the ICC profile), and it was encoded as WebP at 2000 px (quality 90) and 1000 px (85).
+- **Sizes:** each file is well under the 300 KB Tomer approved. The 150 KB page budget still covers everything else.
+- **What loads:** a CSS layer behind the hero carries the photo, so only the one shown downloads. That's Home on a first visit, Business after the switch, and the 1000 px files on phones.
+- **Layout:**
+  - Wide screens: the photo fills the hero, with a carbon shade on the text side, and the text column is capped so it stays there.
+  - Up to 1024 px: the photo is a band across the top, and the text sits below it.
+- **Credit:** a plain-text line, "Photo: [name] on Unsplash", with no link. The photographers' names are **pending Tomer**, because this environment can't open Unsplash.
+- **Checks:**
+  - `tests/hero_contrast.mjs` measures every hero text element against the brightest pixel behind it, at seven widths in both views, and fails below WCAG AA.
+  - `check_static.py` fails on metadata in any hero file, a file over 300 KB, any `img-src` other than `'self'`, or a credit with a link.
+
 ## Icons
 
 Mark A, the element tile's icon cut, lives in `public/favicon.svg` (filled

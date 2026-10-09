@@ -204,6 +204,64 @@ body:has(#aud-business:checked) [data-aud="home"] { display: none !important; }
   border-bottom: 1px solid var(--line);
 }
 .hero--full .wrap { width: 100%; }
+/* Hero photos (CPO order, 9 Oct, Tomer 15:02): Home and Business, self-hosted,
+   Unsplash License. A layer behind the hero (::before) carries the photo, so
+   only the one that applies is downloaded: Home by default, Business once the
+   switch is on Business; 1000 px files on phones. Wide screens: the photo
+   fills the hero with a carbon shade on the text side. Up to 1024 px: the
+   photo is a band across the top that fades into the ground, and the text
+   sits below it. tests/browser_check.mjs measures every hero text element
+   against the brightest pixel behind it. */
+.hero--photo { position: relative; isolation: isolate; }
+.hero--photo::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-color: var(--ground);
+  background-image: var(--hero-shade), var(--hero-img);
+  background-size: cover, var(--hero-size, cover);
+  background-position: center, var(--hero-pos, center);
+  background-repeat: no-repeat;
+}
+.hero--photo {
+  --hero-img: url(/assets/hero/home-2000.webp);
+  --hero-pos: 70% center;
+  --hero-shade: linear-gradient(90deg, rgba(23, 26, 32, .96) 0%, rgba(23, 26, 32, .93) 50%, rgba(23, 26, 32, .6) 74%, rgba(23, 26, 32, .35) 100%);
+}
+body:has(#aud-business:checked) .hero--photo {
+  /* The storefront's lit window sits mid-photo: enlarge and anchor left so it
+     lands on the right, clear of the text. */
+  --hero-img: url(/assets/hero/business-2000.webp);
+  --hero-size: max(180%, 1300px) auto;
+  --hero-pos: 0% 45%;
+  --hero-shade: linear-gradient(90deg, rgba(23, 26, 32, .96) 0%, rgba(23, 26, 32, .93) 58%, rgba(23, 26, 32, .5) 80%, rgba(23, 26, 32, .25) 100%);
+}
+@media (min-width: 1025px) {
+  /* Keep the text column on the shaded side, whatever the copy's length. */
+  .hero--photo .wrap > * { max-width: min(36rem, 46vw); }
+}
+@media (max-width: 1024px) {
+  .hero--photo {
+    --band: clamp(200px, 52vw, 440px);
+    --hero-size: cover;
+    --hero-pos: 62% 45%;
+    --hero-shade: linear-gradient(180deg, rgba(23, 26, 32, .1) 0%, rgba(23, 26, 32, .25) 60%, rgba(23, 26, 32, 1) 100%);
+    min-height: 0;
+    align-items: flex-start;
+    padding-top: calc(var(--band) + 8px);
+  }
+  .hero--photo::before { bottom: auto; height: var(--band); }
+  body:has(#aud-business:checked) .hero--photo {
+    --hero-size: cover;
+    --hero-pos: 55% 50%;
+    --hero-shade: linear-gradient(180deg, rgba(23, 26, 32, .1) 0%, rgba(23, 26, 32, .25) 60%, rgba(23, 26, 32, 1) 100%);
+  }
+}
+@media (max-width: 760px) {
+  .hero--photo { --hero-img: url(/assets/hero/home-1000.webp); }
+  body:has(#aud-business:checked) .hero--photo { --hero-img: url(/assets/hero/business-1000.webp); }
+}
+
+.photo-credit { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--dim); margin-top: 4px; }
+
 .pending {
   font-family: var(--mono); font-size: 13px; color: var(--dim);
   border: 1px dashed var(--edge); border-radius: 3px; padding: 4px 8px; align-self: flex-start;
@@ -333,6 +391,8 @@ body:has(#aud-business:checked) [data-aud="home"] { display: none !important; }
   html, body { background: #FFFFFF; color: #000000; }
   .skip, .nav, .btn, .notice, .switch, .slot { display: none !important; }
   .hero--full { min-height: 0; }
+  .hero--photo { padding-top: 24px !important; }
+  .hero--photo::before { display: none !important; }
   .ph { background: none; }
   body * { color: #000000 !important; }
   .site-head, .section, .site-foot { border-color: #999999; }

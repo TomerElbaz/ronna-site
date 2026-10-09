@@ -19,7 +19,12 @@ Fails if anything in the published tree:
     microphone and geolocation,
   - has anything inline that CSP would block: a <script> without src, a
     <style> element, a style="" attribute, an on*="" handler, a javascript: URL,
-  - lets /confirm/ or /invite/ (token links) lose their no-referrer meta.
+  - lets /confirm/ or /invite/ (token links) lose their no-referrer meta,
+  - has a hero photo (public/assets/hero/) that is over 300 KB, isn't WebP,
+    or still carries metadata (EXIF, XMP or an ICC profile), or a CSP whose
+    img-src is anything but 'self' (photos are served from the site, never
+    hotlinked), or a photo credit that isn't plain "Photo: ... on Unsplash"
+    text without a link.
 
 Links (internal resolution, anchors, outside hosts) are checked by
 tests/check_links.py.
@@ -203,6 +208,40 @@ def main():
         problems.append("_headers: CSP lost form-action 'none'")
     if "frame-ancestors 'none'" not in csp:
         problems.append("_headers: CSP lost frame-ancestors 'none'")
+    if (header("Content-Security-Policy") or "").split("img-src", 1)[-1].split(";", 1)[0].strip() != "'self'":
+        problems.append("_headers: CSP img-src must stay 'self'")
+
+    # Hero photos: self-hosted WebP, at most 300 KB, no metadata chunks.
+    hero = os.path.join(ROOT, "assets", "hero")
+    for name in sorted(os.listdir(hero)) if os.path.isdir(hero) else []:
+        f = os.path.join(hero, name)
+        data = open(f, "rb").read()
+        if len(data) > 300 * 1024:
+            problems.append(f"assets/hero/{name}: {len(data) // 1024} KB, over 300 KB")
+        if data[:4] != b"RIFF" or data[8:12] != b"WEBP":
+            problems.append(f"assets/hero/{name}: not a WebP file")
+            continue
+        pos, chunks = 12, []
+        while pos + 8 <= len(data):
+            tag, size = data[pos:pos + 4].decode("latin-1"), int.from_bytes(data[pos + 4:pos + 8], "little")
+            chunks.append(tag)
+            pos += 8 + size + (size & 1)
+        meta = [c for c in chunks if c in ("EXIF", "XMP ", "ICCP")]
+        if meta:
+            problems.append(f"assets/hero/{name}: still carries metadata {meta}")
+        if data[12:16] == b"VP8X" and data[20] & 0b00101100:
+            problems.append(f"assets/hero/{name}: VP8X header flags metadata")
+    index = open(os.path.join(ROOT, "index.html"), encoding="utf-8").read()
+    credit = re.search(r'<p class="photo-credit">(.*?)</p>', index, re.S)
+    if not credit:
+        problems.append("index.html: hero photo credit missing")
+    else:
+        if "<a" in credit.group(1):
+            problems.append("index.html: photo credit must be plain text, no link")
+        lines = re.findall(r">([^<]+)<", credit.group(0))
+        if len(lines) != 2 or not all(re.fullmatch(r"Photo: .+ on Unsplash", l.strip()) for l in lines):
+            problems.append(f"index.html: photo credit lines {lines} must read 'Photo: [name] on Unsplash'")
+
     for line in headers.splitlines():
         if line.lstrip().startswith("#") and line[:1].isspace():
             problems.append("_headers: indented comment inside a rule block")

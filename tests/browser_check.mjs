@@ -20,6 +20,11 @@
 //   - /waitlist/ does not redirect to the main page,
 //   - any page weighs more than BUDGET (150 KB) on a first visit: every byte
 //     the page loads, fonts included, as served (before any compression),
+//     apart from the hero photo, which has its own 300 KB limit,
+//   - a hero photo is over 300 KB, the wrong one loads (a first visit loads
+//     only Home; Business loads after the switch; 1000 px files on phones), or
+//     any hero text falls below WCAG AA against the brightest pixel behind it
+//     (tests/hero_contrast.mjs), at 320, 390, 820, 1024, 1025, 1280 and 1920 px,
 //   - axe-core finds any serious or critical accessibility issue on any page,
 //     in every state (Home, Business, the email error, the confirm step),
 //   - Tab does not walk the form in order (email, button, Privacy) with a
@@ -46,6 +51,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const shots = process.argv[2];
 const PAGES = ['/', '/what/', '/how/', '/privacy/', '/terms/', '/confirm/', '/invite/', '/off/', '/family/', '/no-such-page'];
 const BUDGET = 150 * 1024;
+// Hero photos (CPO order, 9 Oct; Tomer approved 300 KB): outside the page
+// budget, each held to its own 300 KB, and only one loads on a first visit.
+const PHOTO_BUDGET = 300 * 1024;
+const isHeroPhoto = (url) => /\/assets\/hero\/[a-z]+-\d+\.webp$/.test(url);
 const AXE = readFileSync(process.env.AXE_PATH || createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 const AXE_FAIL = new Set(['serious', 'critical']);
 const WIDTHS = [[320, 640, 'w320'], [390, 844, 'w390'], [1280, 900, 'desktop']];
@@ -61,6 +70,7 @@ const newContext = (opts = {}) => browser.newContext({ ...opts, extraHTTPHeaders
 let browser;
 const problems = [];
 const weights = [];
+let heroNote = '';
 const axeNotes = [];
 const axeRuns = [];
 const fail = (msg) => problems.push(msg);
@@ -102,14 +112,63 @@ try {
     const ctx = await newContext();
     const page = await ctx.newPage();
     const bodies = [];
-    page.on('response', (r) => bodies.push(r.body().then((b) => b.length, () => 0)));
+    const photos = [];
+    page.on('response', (r) => {
+      const size = r.body().then((b) => b.length, () => 0);
+      if (isHeroPhoto(r.url())) photos.push(size.then((n) => [r.url().split('/').pop(), n]));
+      else bodies.push(size);
+    });
     await page.goto(BASE + p, { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(100);
     const bytes = (await Promise.all(bodies)).reduce((a, n) => a + n, 0);
-    weights.push(`${p} ${(bytes / 1024).toFixed(1)} KB`);
-    if (bytes > BUDGET) fail(`${p}: weighs ${(bytes / 1024).toFixed(1)} KB, over the ${BUDGET / 1024} KB budget`);
+    const loadedPhotos = await Promise.all(photos);
+    weights.push(`${p} ${(bytes / 1024).toFixed(1)} KB` + loadedPhotos.map(([n, b]) => ` + ${n} ${(b / 1024).toFixed(1)} KB`).join(''));
+    if (bytes > BUDGET) fail(`${p}: weighs ${(bytes / 1024).toFixed(1)} KB without the hero photo, over the ${BUDGET / 1024} KB budget`);
+    for (const [n, b] of loadedPhotos) if (b > PHOTO_BUDGET) fail(`${p}: hero photo ${n} is ${(b / 1024).toFixed(1)} KB, over ${PHOTO_BUDGET / 1024} KB`);
+    if (p === '/' && loadedPhotos.map(([n]) => n).join() !== 'home-2000.webp') fail(`/: a first visit should load only the Home photo, loaded ${loadedPhotos.map(([n]) => n).join(', ') || 'none'}`);
+    if (p !== '/' && loadedPhotos.length) fail(`${p}: loads a hero photo it doesn't show`);
     await ctx.close();
+  }
+
+  // Hero photos: every file self-hosted and ≤300 KB; the right one per view and
+  // width; and every hero text element readable against the brightest pixel behind it.
+  {
+    const { readdirSync, statSync } = await import('node:fs');
+    const dir = path.join(here, '..', 'public', 'assets', 'hero');
+    const files = readdirSync(dir);
+    const want = ['business-1000.webp', 'business-2000.webp', 'home-1000.webp', 'home-2000.webp'];
+    if (files.sort().join() !== want.join()) fail(`hero photos on disk: ${files.join(', ')}`);
+    for (const f of files) if (statSync(path.join(dir, f)).size > PHOTO_BUDGET) fail(`hero photo ${f} is over ${PHOTO_BUDGET / 1024} KB on disk`);
+    const { heroContrast } = await import('./hero_contrast.mjs');
+    let worst = Infinity;
+    for (const [width, height] of [[320, 640], [390, 844], [820, 1000], [1024, 768], [1025, 768], [1280, 900], [1920, 1080]]) {
+      for (const aud of ['home', 'business']) {
+        const ctx = await newContext({ viewport: { width, height } });
+        const page = await ctx.newPage();
+        const loaded = [];
+        page.on('response', (r) => { if (isHeroPhoto(r.url())) loaded.push(r.url().split('/').pop()); });
+        await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+        const size = width <= 760 ? 1000 : 2000;
+        if (aud === 'business') {
+          // The photo downloads when the page repaints after the switch: wait for it.
+          const got = page.waitForResponse((r) => r.url().endsWith(`/assets/hero/business-${size}.webp`), { timeout: 5000 }).catch(() => null);
+          await page.click('label[for=aud-business]');
+          await got;
+        }
+        await page.evaluate(() => document.fonts.ready);
+        const expect = aud === 'home' ? [`home-${size}.webp`] : [`home-${size}.webp`, `business-${size}.webp`];
+        if (loaded.join() !== expect.join()) fail(`hero ${width}px ${aud}: loaded ${loaded.join(', ') || 'nothing'}, want ${expect.join(', ')}`);
+        const bg = await page.evaluate(() => getComputedStyle(document.querySelector('.hero--photo'), '::before').backgroundImage);
+        if (!bg.includes(`/assets/hero/${aud}-${size}.webp`)) fail(`hero ${width}px ${aud}: shows ${bg}`);
+        const r = await heroContrast(page, `hero ${width}px ${aud}`);
+        r.failures.forEach(fail);
+        worst = Math.min(worst, r.worst);
+        if (shots) await page.screenshot({ path: path.join(shots, `hero_${width}_${aud}.png`) });
+        await ctx.close();
+      }
+    }
+    heroNote = `hero photos: worst text contrast is ${worst.toFixed(2)}× the WCAG AA minimum`;
   }
 
   // Accessibility (issue #14): axe-core on every page and every state.
@@ -540,3 +599,4 @@ if (problems.length) {
 console.log(`OK: ${PAGES.length} pages at 320, 390 and 1280 px; switch, steps and redirect work; nothing left the site`);
 console.log(`Weights (budget ${BUDGET / 1024} KB): ${weights.join(', ')}`);
 console.log(`axe-core: ${axeRuns.length} page states, no serious or critical issues${axeNotes.length ? '; notes: ' + axeNotes.join('; ') : ''}`);
+console.log(heroNote);
