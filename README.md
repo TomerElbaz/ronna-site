@@ -117,7 +117,7 @@ License (CPO order, 9 Oct; Tomer's word 15:02): **Home**
 - **Layout:**
   - Wide screens: the photo fills the hero, with a carbon shade on the text side, and the text column is capped so it stays there.
   - Up to 1024 px: the photo is a band across the top, and the text sits below it.
-- **Credit:** a plain-text line, "Photo: [name] on Unsplash", with no link. The photographers' names are **pending Tomer**, because this environment can't open Unsplash.
+- **Credit:** a plain-text line with no link (CISO 76(b)): Home "Photo: Vladyslav Melnyk on Unsplash", Business "Photo: Martin Laprise on Unsplash".
 - **Checks:**
   - `tests/hero_contrast.mjs` measures every hero text element against the brightest pixel behind it, at seven widths in both views, and fails below WCAG AA.
   - `check_static.py` fails on metadata in any hero file, a file over 300 KB, any `img-src` other than `'self'`, or a credit with a link.
