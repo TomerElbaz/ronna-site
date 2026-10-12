@@ -6,7 +6,7 @@
   <title>Take me off the list · RonnaOps</title>
   <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
   <meta name="robots" content="noindex">
-  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.1 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
+  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.2 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="RonnaOps">
   <meta property="og:title" content="Leave the MOM waitlist">
@@ -59,29 +59,29 @@
         <p class="eyebrow"><span class="mom">MOM</span> waitlist</p>
         <h1 data-heading>Take me off the list</h1>
         <div class="step stack" data-step="form" data-title="Take me off the list">
-          <p class="lede">[COPY] Enter your email and we'll send a link. One click on it removes the address at once.</p>
+          <p class="lede">Enter your email and we'll send you a link. Open it and press Delete; the address is gone at once.</p>
           <form class="form" action="" method="post" data-off-form novalidate>
             <div class="field">
               <label for="off-email">Email</label>
               <input id="off-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="off-error">
             </div>
             <button class="btn" type="submit">Send me the link</button>
-            <p class="notice" id="off-error" role="alert" hidden>[COPY] Enter an email address.</p>
+            <p class="notice" id="off-error" role="alert" hidden>Enter the email address you joined with.</p>
           </form>
-          <p class="fine">[COPY] Or reply to any email from us asking to leave; we remove the address by hand within 7 days.</p>
+          <p class="fine">Or reply to any email from us asking to leave, and we'll remove the address by hand within 7 days.</p>
         </div>
         <div class="step stack" data-step="sent" data-title="Check your email." tabindex="-1" hidden>
-          <p class="lede">[COPY] If that address is on the list, we've sent a link. One click on it removes the address.</p>
+          <p class="lede">If that address is on the list, we've sent a link. Open it and press Delete.</p>
         </div>
         <div class="step stack" data-step="working" data-title="Removing the address" tabindex="-1" hidden>
           <p class="lede">One moment.</p>
         </div>
         <div class="step stack" data-step="deleted" data-title="You're off the list" tabindex="-1" hidden>
-          <p class="lede">[COPY] The address is gone from the list.</p>
+          <p class="lede">The address is gone from the list.</p>
           <a class="btn" href="/">Back to home</a>
         </div>
         <div class="step stack" data-step="bad" data-title="That link didn't work" tabindex="-1" hidden>
-          <p class="lede">[COPY] It may have been used already. Ask for a new one below.</p>
+          <p class="lede">That link has expired or was already used. Ask for a new one below.</p>
           <a class="btn" href="/off/">Take me off the list</a>
         </div>
       </div>

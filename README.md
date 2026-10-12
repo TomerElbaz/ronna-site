@@ -15,10 +15,10 @@ deployed**. See [Waitlist Worker](#waitlist-worker).
 | Path       | File                       | State                                                        |
 |------------|----------------------------|--------------------------------------------------------------|
 | `/`        | `public/index.html`        | The waitlist is the main page (UX design, 12:58 CT 8 Oct). Form posts to `/api/signup` (Worker not deployed). |
-| `/what/`   | `public/what/index.html`   | "What MOM is" in the main page's blocks, Home and Business. `[COPY]`. |
-| `/how/`    | `public/how/index.html`    | How it works: three steps (Tell MOM, MOM files it, You say Go), Home and Business. `[COPY]`. |
-| `/privacy/`| `public/privacy/index.html`| Privacy skeleton, **for CISO review**: what we collect (email only), why, how to leave, never. `[COPY]`. |
-| `/terms/`  | `public/terms/index.html`  | Terms skeleton, **for counsel review**: who we are, the waitlist, leaving, changes, governing law, contact. `[COPY]`. |
+| `/what/`   | `public/what/index.html`   | "What MOM is" in the main page's blocks, Home and Business. Copy v1.2 (DRAFT). |
+| `/how/`    | `public/how/index.html`    | How it works: three steps (Tell MOM, MOM files it, You say Go), Home and Business. Copy v1.2 (DRAFT). |
+| `/privacy/`| `public/privacy/index.html`| Privacy, **for CISO review**: what we collect, why, how to leave, backups, who handles it, never. Copy v1.2 (DRAFT). |
+| `/terms/`  | `public/terms/index.html`  | Terms, **for counsel review**: who we are, the waitlist, leaving, changes, contact. Governing law stays out until counsel writes it. Copy v1.2 (DRAFT). |
 | `/confirm/`| `public/confirm/index.html`| Confirm-email landing: reads `#t=`, a **Confirm** click spends it, then "You're on the list" and the place. `no-store`, no referrer. |
 | `/invite/` | `public/invite/index.html` | Invitations: `#code=` or typed; "Invited by" and the chosen first name only; join, then confirm. `no-store`, no referrer. |
 | `/off/`    | `public/off/index.html`    | "Take me off the list": `#d=` deletes in one click; otherwise a form that emails a link. `no-store`, no referrer. |
@@ -42,7 +42,7 @@ in-page place step. Above the button, a two-line notice says what is kept and
 how to delete it (rule 69.8).
 
 Every page except the 404 and `/family/` carries Open Graph and Twitter share tags with
-`[COPY]` titles and descriptions and the tile (`icon-512.png`) as the image.
+copy v1.2 titles and descriptions and the tile (`icon-512.png`) as the image.
 Pages stay `noindex`.
 
 Response headers are a **DRAFT FOR CISO** (issue #15): a
@@ -86,8 +86,8 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
   waitlist Worker is this site's own; it has no binding to any MOM product
   resource and never calls one (rule 69.1, tested).
 - No real family data, no names, no product screenshots.
-- Copy marked `[COPY]` is placeholder until the CBO's text arrives through
-  the CPO.
+- Copy is the CBO's mom/21 v1.2, shipped as DRAFT (CPO order w03). `[ciso]`,
+  `[counsel]` and `[pending Tomer]` marks are HTML comments, never page text.
 - Company mark: A, the element tile (picked 8 Oct). `public/favicon.svg` is its
   small-size cut (filled `#0B0C0E` tile, white R drawn as an outline, so it
   needs no web font); `favicon.ico` and `apple-touch-icon.png` are rendered

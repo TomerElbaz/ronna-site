@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>What MOM is · RonnaOps</title>
-  <!-- Description from mom/21 v1.1 (DRAFT until Brand signs) -->
+  <!-- Description from mom/21 v1.2 (DRAFT until Brand signs) -->
   <meta name="description" content="MOM keeps one record of your household and brings you what needs a decision.">
   <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
   <meta name="robots" content="noindex">
-  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.1 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
+  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.2 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="RonnaOps">
   <meta property="og:title" content="What MOM is">
@@ -64,9 +64,9 @@
           <span data-aud="home">MOM is the console for your household.</span>
           <span data-aud="business">MOM is the console for your business.</span>
         </h1>
-        <p class="lede" data-aud="home">MOM keeps one record of your household: the schedule, the bills, the people who work for you and the agents that act for you. Eight desks each watch one part of the house and bring you only what needs a decision. Nothing happens until you say Go.</p> <!-- [ciso: last sentence] (mom/21 v1.1, DRAFT) -->
-        <p class="lede" data-aud="business">MOM keeps one record of your business: the schedule, vendors, bills and staff. Each desk watches one part of the work and brings you only what needs a decision. Nothing happens until someone you named says Go.</p> <!-- [ciso: last sentence] (mom/21 v1.1, DRAFT) -->
-        <p data-aud="business">Pricing comes with your invite. The first business pilots run in Austin.</p> <!-- [pending Tomer] CBO pick (mom/21 v1.1, DRAFT); no price anywhere, Home or Business (Tomer, 9 Oct 04:18) -->
+        <p class="lede" data-aud="home">MOM keeps one record of your household: the schedule, the bills, the people who work for you and the agents that act for you. Eight desks each watch one part of the house and bring you only what needs a decision. Nothing goes out in your name until you say Go.</p> <!-- [ciso: last sentence] (mom/21 v1.2, DRAFT) -->
+        <p class="lede" data-aud="business">MOM keeps one record of your business: the schedule, vendors, bills and staff. Each desk watches one part of the work and brings you only what needs a decision. Nothing goes out in the business's name until someone you named says Go.</p> <!-- [ciso: last sentence] (mom/21 v1.2, DRAFT) -->
+        <p data-aud="business">Pricing comes with your invite. The first business pilots run in Austin.</p> <!-- [pending Tomer] CBO pick (mom/21 v1.2, DRAFT); no price anywhere, Home or Business (Tomer, 9 Oct 04:18) -->
         <div class="actions">
           <a class="btn" href="#join">Put us on the list</a>
           <a class="btn btn--ghost" href="/how/">How it works</a>
@@ -86,7 +86,7 @@
         <ul class="facts" data-aud="business">
           <li><span class="fact-num">1</span><span class="fact-label">record for the whole business</span></li>
           <li><span class="fact-num">1</span><span class="fact-label">word to act: Go</span></li>
-          <li><span class="fact-num">0</span><span class="fact-label">ads</span></li> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
+          <li><span class="fact-num">0</span><span class="fact-label">ads</span></li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
         </ul>
       </div>
     </section>
@@ -117,7 +117,7 @@
           <li class="card">
             <div class="ph" role="img" aria-label="Placeholder image 4"><span class="ph-label">Image 4 · placeholder</span></div>
             <h3><span data-aud="home">You say Go</span><span data-aud="business">You say Go</span></h3>
-            <p><span data-aud="home">Or No, or Edit. Nothing goes out before you decide.</span><span data-aud="business">Or No, or Edit. Nothing goes out before someone you named decides.</span></p> <!-- [ciso] home and business (mom/21 v1.1, DRAFT) -->
+            <p><span data-aud="home">Or No, or Edit. Nothing goes out before you decide.</span><span data-aud="business">Or No, or Edit. Nothing goes out before someone you named decides.</span></p> <!-- [ciso] home and business (mom/21 v1.2, DRAFT) -->
           </li>
         </ul>
       </div>
@@ -159,11 +159,11 @@
             <div class="slot" data-slot="human-check" data-size="normal" role="img" aria-label="Human check: not connected">Human check · not connected</div>
             <!-- Honeypot (rule 69.6 bot layers): hidden from people and screen readers; bots that fill it get the usual reply and nothing is sent. -->
             <div class="hp"><label for="waitlist-website">Website</label><input id="waitlist-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
-            <!-- Rule 69.8: two lines above the button on what is kept and how to delete it. Words: mom/21 v1.1 section 10. -->
-            <p class="keep" data-keep>We keep only your email address and the dates you joined and confirmed.<br>Every email from us has a one-click link that deletes it at once, or go to ronna.mom/off.</p> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
+            <!-- Rule 69.8: two lines above the button on what is kept and how to delete it. Words: mom/21 v1.2 section 10. -->
+            <p class="keep" data-keep>We keep only your email address and the dates you joined and confirmed.<br>Every email from us has a one-click link that deletes it at once, or go to ronna.mom/off.</p> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
             <button class="btn" type="submit">Put us on the list</button>
             <p class="notice" id="waitlist-error" role="alert" hidden>Enter an email address so your invite has somewhere to go.</p>
-            <p class="notice" data-failed role="alert" hidden>[COPY] That didn't go through. Try again in a minute.</p>
+            <p class="notice" data-failed role="alert" hidden>That didn't go through. Try again in a minute.</p>
             <p class="fine">We use your email only to tell you when MOM is ready for you. <a href="/privacy/">Privacy</a></p>
           </form>
         </div>
@@ -172,7 +172,7 @@
           <h2>Check your email.</h2>
           <p>We sent you a link. Open it within 24 hours to confirm your place.</p>
           <button class="btn btn--ghost" type="button" data-resend>Send the link again</button>
-          <p class="notice" data-resent role="status" hidden>[COPY] Sent again. It can take a minute to arrive.</p>
+          <p class="notice" data-resent role="status" hidden>Sent again. It can take a minute to arrive.</p>
         </div>
 
       </div>
@@ -184,15 +184,15 @@
         <h2 id="never-title">What MOM never does</h2>
         <ul class="never" data-aud="home">
           <li>Nothing about your family is used to train any model.</li> <!-- cleared, rule 46 -->
-          <li>Passwords and card numbers are never stored in MOM.</li> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
-          <li>Nothing leaves the house without your Go.</li> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
+          <li>MOM never asks for your passwords or card numbers, and removes them when it finds them.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
+          <li>Nothing goes out in your name without your Go.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
           <li>The day you disconnect, your family's data is deleted from MOM. Backup copies are gone within 30 days.</li> <!-- cleared, rule 36 -->
         </ul>
         <ul class="never" data-aud="business">
-          <li>Nothing about your business is used to train any model.</li> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
-          <li>Passwords and card numbers are never stored in MOM.</li> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
-          <li>Nothing leaves the business without a Go from someone you named.</li> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
-          <li>The day you disconnect, your business's data is deleted from MOM. Backup copies are gone within 30 days.</li> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
+          <li>Nothing about your business is used to train any model.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
+          <li>MOM never asks for your passwords or card numbers, and removes them when it finds them.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
+          <li>Nothing goes out in the business's name without a Go from someone you named.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
+          <li>The day you disconnect, your business's data is deleted from MOM. Backup copies are gone within 30 days.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
         </ul>
       </div>
     </section>
@@ -201,7 +201,7 @@
     <section class="section keeper">
       <div class="wrap">
         <p class="keeper-line" data-aud="home">Your family's own MOM.</p> <!-- cleared, rule 46 -->
-        <p class="keeper-line" data-aud="business">Your business's own MOM.</p> <!-- [ciso] (mom/21 v1.1, DRAFT) -->
+        <p class="keeper-line" data-aud="business">Your business's own MOM.</p> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
       </div>
     </section>
   </main>

@@ -306,7 +306,8 @@ body:has(#aud-business:checked) .hero--photo {
 
 .never { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .never li { display: grid; grid-template-columns: 32px 1fr; color: var(--dim); max-width: 62ch; }
-.never li::before { content: "—"; content: "—" / ""; color: var(--ink); }
+/* A short rule, drawn, so no em dash character anywhere (mom/21 v1.2). */
+.never li::before { content: ""; width: 18px; height: 1px; margin-top: .75em; background: var(--ink); }
 
 .keeper-line {
   font-weight: 700; font-stretch: 125%; letter-spacing: .02em; text-wrap: balance;

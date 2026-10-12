@@ -500,7 +500,7 @@ try {
       if (p === '/privacy/') {
         if (!(await visible(page, '.review'))) fail(`${tag} /privacy/: CISO review mark missing`);
         const heads = (await page.locator('main h2').allTextContents()).map((t) => t.trim());
-        if (heads.join('|') !== 'What we collect|Why|How to leave the list|Never') fail(`${tag} /privacy/: sections are ${heads.join(' | ')}`);
+        if (heads.join('|') !== 'What we collect|Why|How to leave the list|Backups|Who handles it|Never') fail(`${tag} /privacy/: sections are ${heads.join(' | ')}`);
       }
       if (['/confirm/', '/invite/', '/off/', '/family/'].includes(p)) {
         if (res.headers()['cache-control'] !== 'no-store') fail(`${tag} ${p}: not no-store`);

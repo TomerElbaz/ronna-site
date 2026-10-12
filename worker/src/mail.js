@@ -10,7 +10,7 @@
 //   Without them nothing is sent ("send.disabled"); nothing is live today.
 // - Tests pass env.MAILER to capture messages instead of sending.
 //
-// Wording is a draft, [COPY] for the CBO; what it must contain is set by rule 69.5.
+// Confirm email words: mom/21 v1.2 section 11 (DRAFT). What it must contain is set by rule 69.5.
 
 import { hex } from "./util.js";
 import { log } from "./log.js";
@@ -35,13 +35,14 @@ function text(lines) {
 
 export function confirmMessage(to, confirmToken, deleteToken) {
   const lines = [
-    "Confirm your place on the MOM waitlist:",
+    "Hi,",
+    "Someone asked to join the MOM waitlist with this address. If it was you, confirm your place here (the link works for 24 hours):",
     { link: `${SITE}/confirm/#t=${confirmToken}` },
-    "The link works for 24 hours.",
-    "If this wasn't you, ignore this email. The address is deleted in 7 days and nothing else happens.",
-    "Remove this address from the list at once:",
+    "If it wasn't you, ignore this email. We delete unconfirmed addresses within 7 days.",
+    "What we keep: your email address and the dates you joined and confirmed. Nothing else.",
+    "Take me off the list:",
     { link: `${SITE}/off/#d=${deleteToken}` },
-    `RonnaOps · Privacy: ${SITE}/privacy/`,
+    "RonnaOps · Austin, Texas",
   ];
   return { to, subject: "Confirm your place on the MOM waitlist", text: text(lines), html: html(lines) };
 }

@@ -24,7 +24,9 @@ Fails if anything in the published tree:
     or still carries metadata (EXIF, XMP or an ICC profile), or a CSP whose
     img-src is anything but 'self' (photos are served from the site, never
     hotlinked), or a photo credit that isn't plain "Photo: ... on Unsplash"
-    text without a link.
+    text without a link,
+  - contains an em dash anywhere, or a [COPY] placeholder outside an HTML
+    comment (copy v1.2, CPO order w03).
 
 Links (internal resolution, anchors, outside hosts) are checked by
 tests/check_links.py.
@@ -136,6 +138,10 @@ def main():
                     problems.append(f"{rel(path)}: points off-site: {url}")
         if BACKEND_RE.search(text):
             problems.append(f"{rel(path)}: mentions a backend host")
+        if not is_license and "\u2014" in text:
+            problems.append(f"{rel(path)}: has an em dash (copy v1.2: none anywhere)")
+        if ext == ".html" and "[COPY]" in re.sub(r"<!--.*?-->", "", text, flags=re.S):
+            problems.append(f"{rel(path)}: still shows a [COPY] placeholder")
         if not is_license and SECRET_RE.search(text):
             problems.append(f"{rel(path)}: looks like a secret: {SECRET_RE.search(text).group(0)}")
         if ext == ".js":

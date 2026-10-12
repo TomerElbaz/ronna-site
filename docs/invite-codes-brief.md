@@ -79,7 +79,7 @@ How to read the marks:
   - The member is never told whether a code was used, or who joined.
   - Rule 72.9 already limits an inviter to seeing used or unused, never who (**VERIFIED**). This brief goes one step simpler and shows not even that.
 - **Friend, on `/invite/`:**
-  - A valid code shows an email box and "[COPY] An invite doesn't move you up the list." **VERIFIED.**
+  - A valid code shows an email box and "Joining with a code doesn't move you up the list." **VERIFIED.**
   - No inviter name is shown, because members have no stored name. **ASSUMED.** Today the page shows "Invited by" and a family's chosen first name (**VERIFIED**).
   - A bad code shows "This invite isn't valid." **VERIFIED.**
   - After that come the normal confirm email and `/confirm/`, which shows the friend's own place and, under §1, their own 3 codes.

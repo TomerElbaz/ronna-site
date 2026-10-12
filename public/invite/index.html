@@ -6,7 +6,7 @@
   <title>You've been invited · RonnaOps</title>
   <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
   <meta name="robots" content="noindex">
-  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.1 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
+  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.2 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="RonnaOps">
   <meta property="og:title" content="Your MOM invite">
@@ -67,7 +67,7 @@
               <input id="invite-code" name="code" type="text" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX" aria-describedby="code-error">
             </div>
             <button class="btn" type="submit">Continue</button>
-            <p class="notice" id="code-error" role="alert" hidden>[COPY] Enter the 16-character code.</p>
+            <p class="notice" id="code-error" role="alert" hidden>Enter the 16-character code from your invite.</p>
             <p class="notice" data-bad role="alert" hidden>This invite isn't valid.</p>
           </form>
         </div>
@@ -79,16 +79,16 @@
               <input id="invite-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="invite-email-error">
             </div>
             <div class="hp"><label for="invite-website">Website</label><input id="invite-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
-            <!-- Rule 69.8 notice above the button; invitees' rows also keep who invited them (rule 72.9). [COPY] wording for the CBO. -->
+            <!-- Rule 69.8 notice above the button; invitees' rows also keep who invited them (rule 72.9). Words: mom/21 v1.2 section 14. -->
             <p class="keep" data-keep>We keep only your email, when you joined and who invited you.<br>Delete it any time with the link in every email, or at ronna.mom/off.</p>
             <!-- Rule 72.12: no promise of moving up the list. -->
-            <p class="referral">[COPY] An invite doesn't move you up the list.</p>
+            <p class="referral">Joining with a code doesn't move you up the list.</p>
             <button class="btn" type="submit">Put us on the list</button>
-            <p class="notice" id="invite-email-error" role="alert" hidden>[COPY] Enter an email address.</p>
+            <p class="notice" id="invite-email-error" role="alert" hidden>Enter an email address so your invite has somewhere to go.</p>
           </form>
         </div>
         <div class="step stack" data-step="sent" data-title="Check your email." tabindex="-1" hidden>
-          <p class="lede">[COPY] One line on the confirm link.</p>
+          <p class="lede">We sent you a link. Open it within 24 hours to confirm your place.</p>
         </div>
       </div>
     </section>
