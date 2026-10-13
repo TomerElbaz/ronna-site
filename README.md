@@ -21,7 +21,7 @@ deployed**. See [Waitlist Worker](#waitlist-worker).
 | `/terms/`  | `public/terms/index.html`  | Terms, **for counsel review**: who we are, the waitlist, leaving, changes, contact. Governing law stays out until counsel writes it. Copy v1.2 (DRAFT). |
 | `/confirm/`| `public/confirm/index.html`| Confirm-email landing: reads `#t=`, a **Confirm** click spends it, then "You're on the list" and the place. `no-store`, no referrer. |
 | `/invite/` | `public/invite/index.html` | Invitations: `#code=` or typed; "Invited by" and the chosen first name only; join, then confirm. `no-store`, no referrer. |
-| `/off/`    | `public/off/index.html`    | "Take me off the list": `#d=` deletes in one click; otherwise a form that emails a link. `no-store`, no referrer. |
+| `/off/`    | `public/off/index.html`    | "Take me off the list": `#d=` opens a **Delete** button, and the address goes only when it is pressed (rule 73(6)); the same page can cancel the member's invite codes instead. Otherwise a form that emails a link. `no-store`, no referrer. |
 | `/family/` | `public/family/index.html` | Family owners, behind Cloudflare Access: link the family, choose the first name, make up to 5 codes (each shown once), revoke. |
 | 404        | `public/404.html`          | `1e27`, large, over "Page not found." Served for unknown paths. |
 
@@ -249,8 +249,9 @@ node tests/browser_check.mjs       # needs Node and Playwright with Chromium
 
 `tests/worker/` runs the Worker against a D1-shaped database over Node's
 built-in SQLite (batches as transactions, as on D1), with a test-only Access
-signing key and a captured mailer. `rule69.test.mjs` and `rule72.test.mjs`
-hold one or more tests per point of rules 69, 72 and 74, named after the rule
+signing key and a captured mailer. `rule69.test.mjs`, `rule72.test.mjs` and
+`rule72bc.test.mjs` (member invite codes, rules 72(b) and 72(c)) hold one or
+more tests per point of rules 69, 72, 72(b), 72(c) and 74, named after the rule
 (`mint-sixth-refused`, `bad-code-one-reply`, `reserve-one-wins`,
 `logs-clean`, …). Races are forced with a barrier, not left to chance. `package.json` holds test tools only; nothing in
 it is published, since Pages serves `public/` alone.

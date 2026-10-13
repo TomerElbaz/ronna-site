@@ -287,12 +287,11 @@ the browser test.
 **Delete link, removing the row at once:**
 - Every email carries `https://ronna.mom/off/#d=<delete token>`. The delete
   token is minted with the row, and only its hash is stored (`kind = delete`).
-- Opening the link runs the deletion straight away (one click). The page
-  posts the token, and the Worker deletes the `signups` row and all its
-  `tokens` rows in one transaction. The page then says it is done.
-- A mail scanner that opens the link would also delete the row. The only
-  harm is that the person signs up again; no data is exposed. The CISO may
-  prefer a confirm button here as on `/confirm/`, at the cost of the one-click rule.
+- **Superseded by rule 73(6) (CPO order w04):** opening the link shows a
+  **Delete** button and deletes nothing; the address goes only when Delete is
+  pressed. The page then posts the token, and the Worker deletes the
+  `signups` row and all its `tokens` rows in one transaction. A mail scanner
+  that opens the link deletes nothing. Tested: `off-needs-press` (browser).
 - `/off/` without a token: a form that sends a fresh delete link to the
   address, with the same answer every time (§4).
 

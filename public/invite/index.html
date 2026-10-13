@@ -72,7 +72,8 @@
           </form>
         </div>
         <div class="step stack" data-step="join" data-title="You've been invited" tabindex="-1" hidden>
-          <p class="invited">Invited by <strong data-invited-by></strong></p>
+          <!-- A family code shows the family's chosen first name; a member code, "Invited by a friend" (rule 72(b)(3)). -->
+          <p class="invited" data-invited>Invited by <strong data-invited-by></strong></p>
           <form class="form" action="" method="post" data-invite-join novalidate>
             <div class="field">
               <label for="invite-email">Email</label>

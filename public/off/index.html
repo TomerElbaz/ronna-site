@@ -73,7 +73,19 @@
         <div class="step stack" data-step="sent" data-title="Check your email." tabindex="-1" hidden>
           <p class="lede">If that address is on the list, we've sent a link. Open it and press Delete.</p>
         </div>
-        <div class="step stack" data-step="working" data-title="Removing the address" tabindex="-1" hidden>
+        <!-- Rule 73(6): the emailed link opens this step; the address goes only when Delete is pressed. -->
+        <div class="step stack" data-step="ready" data-title="Take me off the list" tabindex="-1" hidden>
+          <p class="lede">Press Delete to take this address off the list. It's gone at once.</p>
+          <button class="btn" type="button" data-delete-button>Delete</button>
+          <!-- Rule 72(b)(2): a member revokes their codes from their own link. Words: web desk draft for Brand (w04). -->
+          <p class="fine">Or stay on the list and cancel your invite codes. Codes nobody has used stop working at once.</p>
+          <button class="btn btn--ghost" type="button" data-revoke-button>Cancel my invite codes</button>
+        </div>
+        <div class="step stack" data-step="revoked" data-title="Invite codes cancelled" tabindex="-1" hidden>
+          <p class="lede">Your unused invite codes no longer work. You're still on the list.</p>
+          <a class="btn" href="/">Back to home</a>
+        </div>
+        <div class="step stack" data-step="working" data-title="One moment" tabindex="-1" hidden>
           <p class="lede">One moment.</p>
         </div>
         <div class="step stack" data-step="deleted" data-title="You're off the list" tabindex="-1" hidden>

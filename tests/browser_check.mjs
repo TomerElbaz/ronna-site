@@ -290,9 +290,10 @@ try {
       return page;
     };
 
-    // 1. Signup, confirm with a click, place shown; then one-click delete.
+    // 1. Signup, confirm with a click: place and the member's three codes shown once (rules 72(b), 72(c)(1)).
+    let member = null;
     {
-      const ctx = await newContext({ viewport: { width: 390, height: 844 } });
+      const ctx = await newContext({ viewport: { width: 390, height: 844 }, permissions: ['clipboard-read', 'clipboard-write'] });
       const page = await open(ctx);
       const email = 'e2e-person@example.com';
       secrets.push(email);
@@ -310,20 +311,89 @@ try {
       const token = harness.tokenFrom(mail, 'confirm');
       const del = harness.tokenFrom(mail, 'delete');
       secrets.push(token, del);
-      await page.goto(`${BASE}/confirm/#t=${token}`, { waitUntil: 'networkidle' });
+      const confirmPage = await page.goto(`${BASE}/confirm/#t=${token}`, { waitUntil: 'networkidle' });
+      if (confirmPage.headers()['cache-control'] !== 'no-store') fail('confirm-no-store: /confirm/ is not no-store');
       if (page.url().includes('#')) fail('e2e confirm: token left in the address bar');
       if (!(await visible(page, '[data-step=ready]'))) fail('e2e confirm: no Confirm button');
+      const apiReply = page.waitForResponse((r) => r.url().endsWith('/api/confirm'));
       await page.click('[data-confirm-button]');
+      if ((await apiReply).headers()['cache-control'] !== 'no-store') fail('confirm-no-store: the reply carrying the codes is not no-store');
       await page.waitForSelector('[data-step=done]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e confirm: not confirmed'));
       if ((await page.locator('h1').textContent()).trim() !== "You're on the list") fail('e2e confirm: heading is not "You\'re on the list"');
       if (!/^#\d+$/.test((await page.locator('[data-place]').textContent()).trim())) fail('e2e confirm: no place number');
-      await axeOn(page, '/confirm/ (done)');
+      if (!(await visible(page, '[data-member-codes]'))) fail('member-codes-shown: no codes block after confirm');
+      const codes = (await page.locator('[data-member-code-list] .new-code-text').allTextContents()).map((c) => c.trim());
+      if (codes.length !== 3 || codes.some((c) => !/^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/.test(c))) fail(`member-codes-shown: want 3 codes, got ${JSON.stringify(codes)}`);
+      for (const c of codes) secrets.push(c, c.replace(/-/g, ''));
+      if (!/doesn't move anyone up the list/.test(await page.locator('[data-member-codes]').innerText())) fail('member-codes-shown: no-place-in-line line missing');
+      await page.locator('[data-member-code-list] button').first().click();
+      await until(page, () => document.querySelector('[data-member-code-list] button').textContent === 'Copied').catch(() => fail('member-codes-shown: Copy link did nothing'));
+      const copied = await page.evaluate(() => navigator.clipboard.readText());
+      if (copied !== `${BASE}/invite/#code=${codes[0]}`) fail(`member-codes-shown: copied ${copied}`);
+      if (page.url().includes('#') || codes.some((c) => page.url().toUpperCase().includes(c.replace(/-/g, '')))) fail('confirm-no-code-in-url: a code reached the address bar');
+      await axeOn(page, '/confirm/ (done, codes)');
       await cspCheck(page, '/confirm/');
       if (shots) await page.screenshot({ path: path.join(shots, 'e2e_confirm_done.png'), fullPage: true });
-      await page.goto(`${BASE}/off/#d=${del}`, { waitUntil: 'networkidle' });
-      await page.waitForSelector('[data-step=deleted]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e delete: not deleted'));
+      await page.reload({ waitUntil: 'networkidle' });
+      const after = await page.content();
+      if (codes.some((c) => after.includes(c) || after.includes(c.replace(/-/g, '')))) fail('member-codes-shown: codes shown again after reload');
+      member = { email, del, codes, mails: site.mail.filter((m) => m.to === email).length };
+      await ctx.close();
+    }
+
+    // 1b. A friend uses a member code: "Invited by a friend", join, confirm; the link is emptied on spend (rule 72(c)(3)).
+    {
+      const ctx = await newContext({ viewport: { width: 390, height: 844 } });
+      const page = await open(ctx);
+      const email = 'e2e-friend@example.com';
+      secrets.push(email);
+      await page.goto(`${BASE}/invite/#code=${member.codes[0]}`, { waitUntil: 'networkidle' });
+      if (page.url().includes('#')) fail('e2e friend: code left in the address bar');
+      await page.waitForSelector('[data-step=join]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e friend: member code not accepted'));
+      const shown = (await page.locator('.invited').innerText()).trim();
+      if (shown !== 'Invited by a friend') fail(`member-invite-shows-friend: shows "${shown}"`);
+      await axeOn(page, '/invite/ (friend)');
+      await page.fill('#invite-email', email);
+      await page.click('form[data-invite-join] button[type=submit]');
+      await page.waitForSelector('[data-step=sent]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e friend: redeem gave no answer'));
+      if (site.mail.filter((m) => m.to === member.email).length !== member.mails) fail('member-invite-sends-no-email: the member was emailed because of a code');
+      if (site.mail.filter((m) => m.to === email).length !== 1) fail('member-invite-sends-no-email: the friend got more than their own confirm email');
+      const token = harness.tokenFrom(lastMailTo(email), 'confirm');
+      secrets.push(token);
+      await page.goto(`${BASE}/confirm/#t=${token}`, { waitUntil: 'networkidle' });
+      await page.click('[data-confirm-button]');
+      await page.waitForSelector('[data-step=done]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e friend: confirm failed'));
+      const row = site.env.DB.rows('SELECT invite_code_id, invited_by_family_id FROM signups WHERE email = ?', email)[0];
+      if (!row || row.invite_code_id !== null || row.invited_by_family_id !== null) fail('member-link-emptied-on-spend: the friend still carries a link');
+      const used = site.env.DB.rows("SELECT COUNT(*) AS n FROM invite_codes WHERE member_email = ? AND status = 'used'", member.email)[0].n;
+      if (used !== 1) fail(`member-link-emptied-on-spend: want 1 used code, got ${used}`);
+      for (const c of (await page.locator('[data-member-code-list] .new-code-text').allTextContents())) secrets.push(c.trim(), c.trim().replace(/-/g, ''));
+      await ctx.close();
+    }
+
+    // 1c. The member's own link (rule 73(6)): opening it deletes nothing; Cancel revokes the codes; Delete removes the address.
+    {
+      const ctx = await newContext({ viewport: { width: 390, height: 844 } });
+      const page = await open(ctx);
+      const count = () => site.env.DB.rows('SELECT COUNT(*) AS n FROM signups WHERE email = ?', member.email)[0].n;
+      await page.goto(`${BASE}/off/#d=${member.del}`, { waitUntil: 'networkidle' });
       if (page.url().includes('#')) fail('e2e delete: token left in the address bar');
-      if (site.env.DB.rows('SELECT * FROM signups WHERE email = ?', email).length) fail('e2e delete: row still there');
+      if (!(await visible(page, '[data-step=ready]'))) fail('off-needs-press: no Delete button when the link is opened');
+      await page.waitForTimeout(300);
+      if (count() !== 1) fail('off-needs-press: opening the link deleted the address');
+      await axeOn(page, '/off/ (ready)');
+      if (shots) await page.screenshot({ path: path.join(shots, 'e2e_off_ready.png'), fullPage: true });
+      await page.click('[data-revoke-button]');
+      await page.waitForSelector('[data-step=revoked]:not([hidden])', { timeout: 5000 }).catch(() => fail('member-revoke-own-link: no revoked step'));
+      const live = site.env.DB.rows("SELECT COUNT(*) AS n FROM invite_codes WHERE member_email = ? AND status IN ('unused', 'reserved')", member.email)[0].n;
+      if (live !== 0 || count() !== 1) fail('member-revoke-own-link: codes not revoked, or the address went too');
+      await page.goto('about:blank'); // a fresh load, as from the email; a same-page #fragment change would not rerun the page
+      await page.goto(`${BASE}/off/#d=${member.del}`, { waitUntil: 'networkidle' });
+      if (count() !== 1) fail('off-needs-press: opening the link again deleted the address');
+      await page.click('[data-delete-button]');
+      await page.waitForSelector('[data-step=deleted]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e delete: not deleted'));
+      if (count() !== 0) fail('off-needs-press: Delete pressed, row still there');
+      if (site.env.DB.rows('SELECT COUNT(*) AS n FROM invite_codes WHERE member_email = ?', member.email)[0].n !== 0) fail('member-codes-cascade: codes outlived the member');
       await axeOn(page, '/off/ (deleted)');
       await cspCheck(page, '/off/');
       // /off/ without a token: the request form, same answer for any address

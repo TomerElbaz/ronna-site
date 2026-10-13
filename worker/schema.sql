@@ -53,19 +53,24 @@ CREATE TABLE IF NOT EXISTS enrolment_codes (
   expires_at INTEGER NOT NULL
 );
 
--- Rule 72.9: code hashes, status, times.
+-- Rule 72.9: code hashes, status, times. Each code has exactly one owner:
+-- a family (rule 72) or a confirmed waitlist member (rule 72(b), 72(c)(2)),
+-- whose codes are deleted with their signups row.
 CREATE TABLE IF NOT EXISTS invite_codes (
   code_id        TEXT PRIMARY KEY,                             -- opaque
   code_hash      TEXT NOT NULL UNIQUE,                         -- SHA-256 of the normalised code
-  family_id      TEXT NOT NULL REFERENCES families (family_id) ON DELETE CASCADE,
+  family_id      TEXT REFERENCES families (family_id) ON DELETE CASCADE,
+  member_email   TEXT REFERENCES signups (email) ON DELETE CASCADE,
   status         TEXT NOT NULL CHECK (status IN ('unused', 'reserved', 'used', 'revoked')),
   created_at     INTEGER NOT NULL,
   expires_at     INTEGER NOT NULL,                             -- created_at + 30 days
   reserved_until INTEGER,
   used_at        INTEGER,
-  revoked_at     INTEGER
+  revoked_at     INTEGER,
+  CHECK ((family_id IS NULL) <> (member_email IS NULL))
 );
 CREATE INDEX IF NOT EXISTS invite_codes_family ON invite_codes (family_id, status);
+CREATE INDEX IF NOT EXISTS invite_codes_member ON invite_codes (member_email);
 
 -- Rules 69.6 and 72.8: a random salt per UTC day, deleted the next day.
 CREATE TABLE IF NOT EXISTS salts (
