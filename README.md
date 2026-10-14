@@ -15,8 +15,8 @@ deployed**. See [Waitlist Worker](#waitlist-worker).
 | Path       | File                       | State                                                        |
 |------------|----------------------------|--------------------------------------------------------------|
 | `/`        | `public/index.html`        | The waitlist is the main page (UX design, 12:58 CT 8 Oct). Form posts to `/api/signup` (Worker not deployed). |
-| `/what/`   | `public/what/index.html`   | "What MOM is" in the main page's blocks, Home and Business. Copy v1.2 (DRAFT). |
-| `/how/`    | `public/how/index.html`    | How it works: three steps (Tell MOM, MOM files it, You say Go), Home and Business. Copy v1.2 (DRAFT). |
+| `/what/`   | `public/what/index.html`   | "What MOM is" in the main page's blocks, Copy v1.2 (DRAFT). |
+| `/how/`    | `public/how/index.html`    | How it works: three steps (Tell MOM, MOM files it, You say Go), Copy v1.2 (DRAFT). |
 | `/privacy/`| `public/privacy/index.html`| Privacy, **for CISO review**: what we collect, why, how to leave, backups, who handles it, never. Copy v1.2 (DRAFT). |
 | `/terms/`  | `public/terms/index.html`  | Terms, **for counsel review**: who we are, the waitlist, leaving, changes, contact. Governing law stays out until counsel writes it. Copy v1.2 (DRAFT). |
 | `/confirm/`| `public/confirm/index.html`| Confirm-email landing: reads `#t=`, a **Confirm** click spends it, then "You're on the list" and the place. `no-store`, no referrer. |
@@ -27,15 +27,16 @@ deployed**. See [Waitlist Worker](#waitlist-worker).
 
 `/waitlist` and `/waitlist/` redirect to `/` (`public/_redirects`).
 
-The main page, top to bottom: a Home | Business switch in the header, a
+The site is for households only (CPO order w04 addendum): no Home | Business
+switch, no business copy, and the static check fails on any business word.
+
+The main page, top to bottom: a
 full-width hero (white "Put us on the list", outlined "How it works"), three
 facts, a box shelf of four cards with labelled placeholder images, the form
 (email, a human-check slot, white button), a "never" list with white dashes,
 a keeper line, and a footer with the 10<sup>27</sup> line and links to
 What MOM is, How it works, Privacy and "Take me off the list". The hero's
-"How it works" button opens `/how/`. The switch is CSS only (radio plus `:has`): blocks marked
-`data-aud="home"` or `data-aud="business"` show for the checked side, so it
-works without JavaScript. After submit, the page shows the confirm step
+"How it works" button opens `/how/`. After submit, the page shows the confirm step
 ("Check your email." and "Send the link again"). The place on the list is
 its own page, `/confirm/`, which the confirm email's link opens; there is no
 in-page place step. Above the button, a two-line notice says what is kept and
@@ -105,21 +106,20 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
 
 ## Hero photos
 
-The main page's hero carries two photos from Unsplash, under the Unsplash
-License (CPO order, 9 Oct; Tomer's word 15:02): **Home**
-(unsplash.com/photos/IHxTr8c_yh8, a house at night) and **Business**
-(unsplash.com/photos/NWOyowI7t44, a lit storefront at night).
+The main page's hero carries one photo from Unsplash, under the Unsplash
+License (CPO order, 9 Oct; Tomer's word 15:02): unsplash.com/photos/IHxTr8c_yh8,
+a house at night.
 
-- **Self-hosted, never hotlinked:** `public/assets/hero/{home,business}-{2000,1000}.webp`. The CSP keeps `img-src 'self'`.
+- **Self-hosted, never hotlinked:** `public/assets/hero/home-{2000,1000}.webp`. The CSP keeps `img-src 'self'`.
 - **Processed:** each photo was converted to sRGB, then all metadata was stripped (EXIF, XMP and the ICC profile), and it was encoded as WebP at 2000 px (quality 90) and 1000 px (85).
 - **Sizes:** each file is well under the 300 KB Tomer approved. The 150 KB page budget still covers everything else.
-- **What loads:** a CSS layer behind the hero carries the photo, so only the one shown downloads. That's Home on a first visit, Business after the switch, and the 1000 px files on phones.
+- **What loads:** a CSS layer behind the hero carries the photo, which loads once; phones get the 1000 px file.
 - **Layout:**
   - Wide screens: the photo fills the hero, with a carbon shade on the text side, and the text column is capped so it stays there.
   - Up to 1024 px: the photo is a band across the top, and the text sits below it.
-- **Credit:** a plain-text line with no link (CISO 76(b)): Home "Photo: Vladyslav Melnyk on Unsplash", Business "Photo: Martin Laprise on Unsplash".
+- **Credit:** a plain-text line with no link (CISO 76(b)): "Photo: Vladyslav Melnyk on Unsplash".
 - **Checks:**
-  - `tests/hero_contrast.mjs` measures every hero text element against the brightest pixel behind it, at seven widths in both views, and fails below WCAG AA.
+  - `tests/hero_contrast.mjs` measures every hero text element against the brightest pixel behind it, at seven widths, and fails below WCAG AA.
   - `check_static.py` fails on metadata in any hero file, a file over 300 KB, any `img-src` other than `'self'`, or a credit with a link.
 
 ## Icons
@@ -267,14 +267,14 @@ ever carries a code, token or email (`invite-code-never-in-url`). It loads
 every page at 320, 390 and 1280 px with the real headers and redirects, and
 fails on any off-site request, console error,
 missing font or tile, sideways scroll or cut-off text, invisible keyboard
-focus, a switch that does not swap the copy, a broken step (empty email,
+focus, the Home | Business switch or business wording coming back, a broken step (empty email,
 confirm, resend), a waitlist submit that sends anything but one same-origin
 POST to `/api/signup` (or anything at all without JavaScript), a missing
 two-line notice above the button, `/waitlist/` not redirecting, or any page over the
 **150 KB budget**: every byte a first visit loads, fonts included, measured
 as served before compression, in a fresh browser each time. It prints each
-page's weight. It also runs **axe-core** on every page and state (Home,
-Business, the email error, the confirm step, and the confirm, delete,
+page's weight. It also runs **axe-core** on every page and state (the page,
+the email error, the confirm step, and the confirm, delete,
 invite and family flows) and fails on any serious or
 critical issue; walks the form by keyboard (email, button, Privacy, and back;
 Enter on an empty field keeps focus there and marks it invalid; Enter on a

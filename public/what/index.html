@@ -38,20 +38,13 @@
   <!--
     "What MOM is", in the same blocks as the main page (CPO order, 8 Oct):
     hero, three facts, shelf of four cards, form, never list, keeper line,
-    footer. The Home | Business switch works the same way (CSS only). The
+    footer. The
     form here is the same inert form; the place on the list is /confirm/.
   -->
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-head">
     <div class="wrap">
       <a class="wordmark" href="/" aria-label="RonnaOps home"><img class="tile" src="/favicon.svg" alt="" width="32" height="32"><span>RonnaOps</span></a>
-      <fieldset class="switch">
-        <legend class="sr-only">Show this page for</legend>
-        <input type="radio" name="audience" id="aud-home" value="home" checked>
-        <label for="aud-home">Home</label>
-        <input type="radio" name="audience" id="aud-business" value="business">
-        <label for="aud-business">Business</label>
-      </fieldset>
     </div>
   </header>
 
@@ -61,12 +54,11 @@
       <div class="wrap stack">
         <p class="eyebrow">What <span class="mom">MOM</span> is</p>
         <h1 id="hero-title">
-          <span data-aud="home">MOM is the console for your household.</span>
-          <span data-aud="business">MOM is the console for your business.</span>
+          <span>MOM is the console for your household.</span>
+
         </h1>
-        <p class="lede" data-aud="home">MOM keeps one record of your household: the schedule, the bills, the people who work for you and the agents that act for you. Eight desks each watch one part of the house and bring you only what needs a decision. Nothing goes out in your name until you say Go.</p> <!-- [ciso: last sentence] (mom/21 v1.2, DRAFT) -->
-        <p class="lede" data-aud="business">MOM keeps one record of your business: the schedule, vendors, bills and staff. Each desk watches one part of the work and brings you only what needs a decision. Nothing goes out in the business's name until someone you named says Go.</p> <!-- [ciso: last sentence] (mom/21 v1.2, DRAFT) -->
-        <p data-aud="business">Pricing comes with your invite. The first business pilots run in Austin.</p> <!-- [pending Tomer] CBO pick (mom/21 v1.2, DRAFT); no price anywhere, Home or Business (Tomer, 9 Oct 04:18) -->
+        <p class="lede">MOM keeps one record of your household: the schedule, the bills, the people who work for you and the agents that act for you. Eight desks each watch one part of the house and bring you only what needs a decision. Nothing goes out in your name until you say Go.</p> <!-- [ciso: last sentence] (mom/21 v1.2, DRAFT) -->
+         <!-- [ciso: last sentence] (mom/21 v1.2, DRAFT) -->
         <div class="actions">
           <a class="btn" href="#join">Put us on the list</a>
           <a class="btn btn--ghost" href="/how/">How it works</a>
@@ -78,16 +70,12 @@
     <section class="section" aria-labelledby="facts-title">
       <div class="wrap stack">
         <h2 id="facts-title" class="sr-only">At a glance</h2>
-        <ul class="facts" data-aud="home">
+        <ul class="facts">
           <li><span class="fact-num">1</span><span class="fact-label">record for the whole household</span></li>
           <li><span class="fact-num">8</span><span class="fact-label">desks, one for each part of the house</span></li>
           <li><span class="fact-num">1</span><span class="fact-label">word to act: Go</span></li>
         </ul>
-        <ul class="facts" data-aud="business">
-          <li><span class="fact-num">1</span><span class="fact-label">record for the whole business</span></li>
-          <li><span class="fact-num">1</span><span class="fact-label">word to act: Go</span></li>
-          <li><span class="fact-num">0</span><span class="fact-label">ads</span></li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
-        </ul>
+
       </div>
     </section>
 
@@ -95,29 +83,29 @@
     <section class="section" aria-labelledby="shelf-title">
       <div class="wrap stack">
         <h2 id="shelf-title">
-          <span data-aud="home">How it works at home</span>
-          <span data-aud="business">How it works at work</span>
+          <span>How it works at home</span>
+
         </h2>
         <ul class="shelf">
           <li class="card">
             <div class="ph" role="img" aria-label="Placeholder image 1"><span class="ph-label">Image 1 · placeholder</span></div>
-            <h3><span data-aud="home">Tell MOM</span><span data-aud="business">Tell MOM</span></h3>
-            <p><span data-aud="home">Say it or type it, the way you'd tell a person.</span><span data-aud="business">Say it, type it or forward the email.</span></p>
+            <h3><span>Tell MOM</span></h3>
+            <p><span>Say it or type it, the way you'd tell a person.</span></p>
           </li>
           <li class="card">
             <div class="ph" role="img" aria-label="Placeholder image 2"><span class="ph-label">Image 2 · placeholder</span></div>
-            <h3><span data-aud="home">MOM files it</span><span data-aud="business">MOM files it</span></h3>
-            <p><span data-aud="home">On the right desk and the right person's track.</span><span data-aud="business">On the right desk and the right person's lane.</span></p>
+            <h3><span>MOM files it</span></h3>
+            <p><span>On the right desk and the right person's track.</span></p>
           </li>
           <li class="card">
             <div class="ph" role="img" aria-label="Placeholder image 3"><span class="ph-label">Image 3 · placeholder</span></div>
-            <h3><span data-aud="home">MOM drafts</span><span data-aud="business">MOM drafts</span></h3>
-            <p><span data-aud="home">The reply, the booking, the call.</span><span data-aud="business">The order, the reply, the reminder.</span></p>
+            <h3><span>MOM drafts</span></h3>
+            <p><span>The reply, the booking, the call.</span></p>
           </li>
           <li class="card">
             <div class="ph" role="img" aria-label="Placeholder image 4"><span class="ph-label">Image 4 · placeholder</span></div>
-            <h3><span data-aud="home">You say Go</span><span data-aud="business">You say Go</span></h3>
-            <p><span data-aud="home">Or No, or Edit. Nothing goes out before you decide.</span><span data-aud="business">Or No, or Edit. Nothing goes out before someone you named decides.</span></p> <!-- [ciso] home and business (mom/21 v1.2, DRAFT) -->
+            <h3><span>You say Go</span></h3>
+            <p><span>Or No, or Edit. Nothing goes out before you decide.</span></p> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
           </li>
         </ul>
       </div>
@@ -128,11 +116,10 @@
       <div class="wrap">
         <div class="step stack" data-step="form">
           <h2 id="join-title">
-            <span data-aud="home">Join the waitlist.</span>
-            <span data-aud="business">Join the business waitlist.</span>
+            <span>Join the waitlist.</span>
+
           </h2>
-          <p data-aud="home">We open in small groups, a few households at a time. Your invite comes by email.</p>
-          <p data-aud="business">The first businesses come in as pilots in Austin. We'll write when one opens.</p>
+          <p>We open in small groups, a few households at a time. Your invite comes by email.</p>
 
           <!--
             Sends to this site's own /api/signup (the waitlist Worker, CISO
@@ -182,26 +169,21 @@
     <section class="section" aria-labelledby="never-title">
       <div class="wrap stack">
         <h2 id="never-title">What MOM never does</h2>
-        <ul class="never" data-aud="home">
+        <ul class="never">
           <li>Nothing about your family is used to train any model.</li> <!-- cleared, rule 46 -->
           <li>MOM never asks for your passwords or card numbers, and removes them when it finds them.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
           <li>Nothing goes out in your name without your Go.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
           <li>The day you disconnect, your family's data is deleted from MOM. Backup copies are gone within 30 days.</li> <!-- cleared, rule 36 -->
         </ul>
-        <ul class="never" data-aud="business">
-          <li>Nothing about your business is used to train any model.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
-          <li>MOM never asks for your passwords or card numbers, and removes them when it finds them.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
-          <li>Nothing goes out in the business's name without a Go from someone you named.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
-          <li>The day you disconnect, your business's data is deleted from MOM. Backup copies are gone within 30 days.</li> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
-        </ul>
+
       </div>
     </section>
 
     <!-- 6. Keeper line -->
     <section class="section keeper">
       <div class="wrap">
-        <p class="keeper-line" data-aud="home">Your family's own MOM.</p> <!-- cleared, rule 46 -->
-        <p class="keeper-line" data-aud="business">Your business's own MOM.</p> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
+        <p class="keeper-line">Your family's own MOM.</p> <!-- cleared, rule 46 -->
+         <!-- [ciso] (mom/21 v1.2, DRAFT) -->
       </div>
     </section>
   </main>

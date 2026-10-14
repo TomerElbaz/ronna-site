@@ -26,7 +26,10 @@ Fails if anything in the published tree:
     hotlinked), or a photo credit that isn't plain "Photo: ... on Unsplash"
     text without a link,
   - contains an em dash anywhere, or a [COPY] placeholder outside an HTML
-    comment (copy v1.2, CPO order w03).
+    comment (copy v1.2, CPO order w03),
+  - says "business" anywhere, keeps any piece of the Home | Business switch
+    (data-aud, aud-*, .switch), or mentions ronnaops.com (CPO order w04
+    addendum: the site is for households only).
 
 Links (internal resolution, anchors, outside hosts) are checked by
 tests/check_links.py.
@@ -54,6 +57,9 @@ SECRET_RE = re.compile(
     r"(api[_-]?key\s*[:=]|secret\s*[:=]\s*[\"']|bearer\s+[a-z0-9]{8}|token\s*[:=]\s*[\"'][A-Za-z0-9_\-]{16,}|sk-[A-Za-z0-9]{16,}|AKIA[0-9A-Z]{16}|-----BEGIN)",
     re.I,
 )
+# CPO order w04 addendum: households only. No business word, no piece of the
+# Home | Business switch, and no ronnaops.com anywhere in the published site.
+BUSINESS_RE = re.compile(r"business|data-aud|\baud-|\.switch\b|class=\"switch|ronnaops\.com", re.I)
 NETWORK_JS_RE = re.compile(r"\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|navigator\.sendBeacon|\.submit\(\))", re.I)
 
 problems = []
@@ -140,6 +146,8 @@ def main():
             problems.append(f"{rel(path)}: mentions a backend host")
         if not is_license and "\u2014" in text:
             problems.append(f"{rel(path)}: has an em dash (copy v1.2: none anywhere)")
+        if not is_license and BUSINESS_RE.search(text):
+            problems.append(f"{rel(path)}: business wording or switch left: {BUSINESS_RE.search(text).group(0)!r} (w04 addendum)")
         if ext == ".html" and "[COPY]" in re.sub(r"<!--.*?-->", "", text, flags=re.S):
             problems.append(f"{rel(path)}: still shows a [COPY] placeholder")
         if not is_license and SECRET_RE.search(text):
@@ -245,7 +253,7 @@ def main():
         if "<a" in credit.group(1):
             problems.append("index.html: photo credit must be plain text, no link")
         lines = re.findall(r">([^<]+)<", credit.group(0))
-        if len(lines) != 2 or not all(re.fullmatch(r"Photo: .+ on Unsplash", l.strip()) for l in lines):
+        if len(lines) != 1 or not all(re.fullmatch(r"Photo: .+ on Unsplash", l.strip()) for l in lines):
             problems.append(f"index.html: photo credit lines {lines} must read 'Photo: [name] on Unsplash'")
 
     for line in headers.splitlines():

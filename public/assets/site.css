@@ -181,33 +181,13 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
 
 /* ---- Waitlist main page (UX design, 12:58 CT) ---- */
 
-/* Home | Business switch. CSS only: the checked radio shows its copy. */
-.switch {
-  display: inline-flex; margin: 0; padding: 2px; min-width: 0;
-  border: 1px solid var(--edge); border-radius: 4px;
-}
-.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
-.switch label {
-  font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--dim); padding: 8px 12px; border-radius: 3px; cursor: pointer; user-select: none;
-}
-.switch input:checked + label { background: var(--ink); color: var(--ground); }
-.switch input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: 2px; }
-body:not(:has(#aud-business:checked)) [data-aud="business"] { display: none !important; }
-body:has(#aud-business:checked) [data-aud="home"] { display: none !important; }
-@supports not selector(:has(*)) {
-  [data-aud="business"], .switch { display: none !important; }
-}
-
 .hero--full {
   min-height: min(78vh, 760px); display: flex; align-items: center;
   border-bottom: 1px solid var(--line);
 }
 .hero--full .wrap { width: 100%; }
-/* Hero photos (CPO order, 9 Oct, Tomer 15:02): Home and Business, self-hosted,
-   Unsplash License. A layer behind the hero (::before) carries the photo, so
-   only the one that applies is downloaded: Home by default, Business once the
-   switch is on Business; 1000 px files on phones. Wide screens: the photo
+/* Hero photo (CPO order, 9 Oct, Tomer 15:02): self-hosted, Unsplash License.
+   A layer behind the hero (::before) carries the photo; 1000 px file on phones. Wide screens: the photo
    fills the hero with a carbon shade on the text side. Up to 1024 px: the
    photo is a band across the top that fades into the ground, and the text
    sits below it. tests/browser_check.mjs measures every hero text element
@@ -226,14 +206,6 @@ body:has(#aud-business:checked) [data-aud="home"] { display: none !important; }
   --hero-pos: 70% center;
   --hero-shade: linear-gradient(90deg, rgba(23, 26, 32, .96) 0%, rgba(23, 26, 32, .93) 50%, rgba(23, 26, 32, .6) 74%, rgba(23, 26, 32, .35) 100%);
 }
-body:has(#aud-business:checked) .hero--photo {
-  /* The storefront's lit window sits mid-photo: enlarge and anchor left so it
-     lands on the right, clear of the text. */
-  --hero-img: url(/assets/hero/business-2000.webp);
-  --hero-size: max(180%, 1300px) auto;
-  --hero-pos: 0% 45%;
-  --hero-shade: linear-gradient(90deg, rgba(23, 26, 32, .96) 0%, rgba(23, 26, 32, .93) 58%, rgba(23, 26, 32, .5) 80%, rgba(23, 26, 32, .25) 100%);
-}
 @media (min-width: 1025px) {
   /* Keep the text column on the shaded side, whatever the copy's length. */
   .hero--photo .wrap > * { max-width: min(36rem, 46vw); }
@@ -249,15 +221,9 @@ body:has(#aud-business:checked) .hero--photo {
     padding-top: calc(var(--band) + 8px);
   }
   .hero--photo::before { bottom: auto; height: var(--band); }
-  body:has(#aud-business:checked) .hero--photo {
-    --hero-size: cover;
-    --hero-pos: 55% 50%;
-    --hero-shade: linear-gradient(180deg, rgba(23, 26, 32, .1) 0%, rgba(23, 26, 32, .25) 60%, rgba(23, 26, 32, 1) 100%);
-  }
 }
 @media (max-width: 760px) {
   .hero--photo { --hero-img: url(/assets/hero/home-1000.webp); }
-  body:has(#aud-business:checked) .hero--photo { --hero-img: url(/assets/hero/business-1000.webp); }
 }
 
 .photo-credit { font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--dim); margin-top: 4px; }
@@ -390,7 +356,7 @@ body:has(#aud-business:checked) .hero--photo {
 @media print {
   :root { color-scheme: light; }
   html, body { background: #FFFFFF; color: #000000; }
-  .skip, .nav, .btn, .notice, .switch, .slot { display: none !important; }
+  .skip, .nav, .btn, .notice, .slot { display: none !important; }
   .hero--full { min-height: 0; }
   .hero--photo { padding-top: 24px !important; }
   .hero--photo::before { display: none !important; }

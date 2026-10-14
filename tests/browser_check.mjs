@@ -7,11 +7,11 @@
 //   - the fonts or the header tile do not load,
 //   - the page scrolls sideways or text is cut off at the right edge,
 //   - keyboard focus is not visible, or Tab does not start at the skip link,
-//   - the Home | Business switch does not swap the copy (with or without JS),
-//     on the main page and on /what/,
+//   - the Home | Business switch, or any business wording, comes back on the
+//     main page or /what/ (w04 addendum: households only),
 //   - the 404 page loses its large 1e27 and the "Page not found." line,
 //   - any icon in the set is missing,
-//   - /how/ loses its three steps or its switch, /privacy/ its CISO mark or
+//   - /how/ loses its three steps, /privacy/ its CISO mark or
 //     sections, /confirm/ its heading, place placeholder or no-store, or runs a script,
 //   - the human-check slot is not Turnstile-sized (300x65, 150x140 under 332 px),
 //   - the waitlist steps misbehave (empty email, confirm, resend), or an
@@ -22,11 +22,11 @@
 //     the page loads, fonts included, as served (before any compression),
 //     apart from the hero photo, which has its own 300 KB limit,
 //   - a hero photo is over 300 KB, the wrong one loads (a first visit loads
-//     only Home; Business loads after the switch; 1000 px files on phones), or
+//     only Home; 1000 px files on phones), or
 //     any hero text falls below WCAG AA against the brightest pixel behind it
 //     (tests/hero_contrast.mjs), at 320, 390, 820, 1024, 1025, 1280 and 1920 px,
 //   - axe-core finds any serious or critical accessibility issue on any page,
-//     in every state (Home, Business, the email error, the confirm step),
+//     in every state (the page, the email error, the confirm step),
 //   - Tab does not walk the form in order (email, button, Privacy) with a
 //     visible focus ring, or focus does not land where it should after an
 //     error or a submit,
@@ -137,27 +137,21 @@ try {
     const { readdirSync, statSync } = await import('node:fs');
     const dir = path.join(here, '..', 'public', 'assets', 'hero');
     const files = readdirSync(dir);
-    const want = ['business-1000.webp', 'business-2000.webp', 'home-1000.webp', 'home-2000.webp'];
+    const want = ['home-1000.webp', 'home-2000.webp']; // households only (w04 addendum)
     if (files.sort().join() !== want.join()) fail(`hero photos on disk: ${files.join(', ')}`);
     for (const f of files) if (statSync(path.join(dir, f)).size > PHOTO_BUDGET) fail(`hero photo ${f} is over ${PHOTO_BUDGET / 1024} KB on disk`);
     const { heroContrast } = await import('./hero_contrast.mjs');
     let worst = Infinity;
     for (const [width, height] of [[320, 640], [390, 844], [820, 1000], [1024, 768], [1025, 768], [1280, 900], [1920, 1080]]) {
-      for (const aud of ['home', 'business']) {
+      for (const aud of ['home']) {
         const ctx = await newContext({ viewport: { width, height } });
         const page = await ctx.newPage();
         const loaded = [];
         page.on('response', (r) => { if (isHeroPhoto(r.url())) loaded.push(r.url().split('/').pop()); });
         await page.goto(BASE + '/', { waitUntil: 'networkidle' });
         const size = width <= 760 ? 1000 : 2000;
-        if (aud === 'business') {
-          // The photo downloads when the page repaints after the switch: wait for it.
-          const got = page.waitForResponse((r) => r.url().endsWith(`/assets/hero/business-${size}.webp`), { timeout: 5000 }).catch(() => null);
-          await page.click('label[for=aud-business]');
-          await got;
-        }
         await page.evaluate(() => document.fonts.ready);
-        const expect = aud === 'home' ? [`home-${size}.webp`] : [`home-${size}.webp`, `business-${size}.webp`];
+        const expect = [`home-${size}.webp`];
         if (loaded.join() !== expect.join()) fail(`hero ${width}px ${aud}: loaded ${loaded.join(', ') || 'nothing'}, want ${expect.join(', ')}`);
         const bg = await page.evaluate(() => getComputedStyle(document.querySelector('.hero--photo'), '::before').backgroundImage);
         if (!bg.includes(`/assets/hero/${aud}-${size}.webp`)) fail(`hero ${width}px ${aud}: shows ${bg}`);
@@ -189,11 +183,6 @@ try {
       const page = await ctx.newPage();
       await page.goto(BASE + p, { waitUntil: 'networkidle' });
       await axeRun(page, p);
-      if (await page.locator('label[for=aud-business]').count()) {
-        await page.click('label[for=aud-business]');
-        await axeRun(page, `${p} (Business)`);
-        await page.click('label[for=aud-home]');
-      }
       if (await page.locator('form[data-waitlist]').count()) {
         await page.click('form[data-waitlist] button[type=submit]');
         await axeRun(page, `${p} (email error)`);
@@ -492,10 +481,7 @@ try {
       if (p === '/how/') {
         const titles = (await page.locator('.how-step h3').allTextContents()).map((t) => t.replace('Step 1: ', '').replace('Step 2: ', '').replace('Step 3: ', '').trim());
         if (titles.join('|') !== 'Tell MOM|MOM files it|You say Go') fail(`${tag} /how/: steps are ${titles.join(' | ')}`);
-        if (!(await visible(page, '.how-step [data-aud=home]')) || (await visible(page, '.how-step [data-aud=business]'))) fail(`${tag} /how/: Home copy not the default`);
-        await page.click('label[for=aud-business]');
-        if (!(await visible(page, '.how-step [data-aud=business]')) || (await visible(page, '.how-step [data-aud=home]'))) fail(`${tag} /how/: switch does not swap the steps`);
-        await fit(' (Business)');
+        if ((await page.locator('.how-step p').count()) !== 3) fail(`${tag} /how/: want one line under each of the three steps`);
       }
       if (p === '/privacy/') {
         if (!(await visible(page, '.review'))) fail(`${tag} /privacy/: CISO review mark missing`);
@@ -523,15 +509,9 @@ try {
         const slot = await page.locator('[data-slot=human-check]').boundingBox();
         const want = width < 332 ? [150, 140] : [300, 65];
         if (!slot || Math.round(slot.width) !== want[0] || Math.round(slot.height) !== want[1]) fail(`${tag} ${p}: human-check slot is ${slot && Math.round(slot.width)}x${slot && Math.round(slot.height)}, want ${want.join('x')}`);
-        // Switch: Home copy by default, Business copy after the switch.
-        if (!(await visible(page, 'h1 [data-aud=home]')) || (await visible(page, 'h1 [data-aud=business]'))) fail(`${tag} switch: Home copy not the default`);
-        await page.click('label[for=aud-business]');
-        if (!(await visible(page, 'h1 [data-aud=business]')) || (await visible(page, 'h1 [data-aud=home]'))) fail(`${tag} switch: Business copy did not show`);
-        if (p === '/' && (await page.locator('#shelf-title [data-aud=business]').textContent()).trim() !== 'A box in your office') fail(`${tag} switch: Business shelf title wrong`);
-        await fit(' (Business)');
-        if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_')}business.png`), fullPage: true });
-        await page.click('label[for=aud-home]');
-        if (!(await visible(page, 'h1 [data-aud=home]'))) fail(`${tag} switch: Home copy did not come back`);
+        // Households only (w04 addendum): no switch, no business copy anywhere on the page.
+        if (await page.locator('.switch, input[name=audience], [data-aud]').count()) fail(`${tag} ${p}: the Home | Business switch is still there`);
+        if (/business/i.test(await page.locator('body').innerText())) fail(`${tag} ${p}: business wording on the page`);
 
         // Steps, with JS. The only request is a same-origin POST to /api/signup.
         const sent = [];
@@ -564,12 +544,10 @@ try {
         // The place on the list is /confirm/ only (CPO, issue #8).
         if (await page.locator('[data-step=place], #on-the-list').count()) fail(`${tag} ${p}: in-page place step should be gone`);
 
-        // Without JS: the switch still works (CSS only) and the form sends nothing.
+        // Without JS: the form sends nothing.
         const noJs = await newContext({ javaScriptEnabled: false, viewport: { width, height } });
         const p2 = await noJs.newPage();
         await p2.goto(BASE + p, { waitUntil: 'networkidle' });
-        await p2.click('label[for=aud-business]');
-        if (!(await visible(p2, 'h1 [data-aud=business]'))) fail(`${tag} ${p} no-JS: switch does not swap copy`);
         const posts = [];
         p2.on('request', (r) => { if (r.method() !== 'GET') posts.push(`${r.method()} ${r.url()}`); });
         await p2.fill('#waitlist-email', 'test@example.com');
@@ -596,7 +574,7 @@ if (problems.length) {
   for (const p of problems) console.log('  ' + p);
   process.exit(1);
 }
-console.log(`OK: ${PAGES.length} pages at 320, 390 and 1280 px; switch, steps and redirect work; nothing left the site`);
+console.log(`OK: ${PAGES.length} pages at 320, 390 and 1280 px; no switch; steps and redirect work; nothing left the site`);
 console.log(`Weights (budget ${BUDGET / 1024} KB): ${weights.join(', ')}`);
 console.log(`axe-core: ${axeRuns.length} page states, no serious or critical issues${axeNotes.length ? '; notes: ' + axeNotes.join('; ') : ''}`);
 console.log(heroNote);
