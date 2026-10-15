@@ -62,7 +62,20 @@ const WIDTHS = [[320, 640, 'w320'], [390, 844, 'w390'], [1280, 900, 'desktop']];
 // The site and the waitlist Worker, in this process (tests/dev_server.mjs).
 const { startServer } = await import('./dev_server.mjs');
 const harness = await import('./worker/harness.mjs');
-const site = await startServer({ port: 0, emulateAccess: false, minReplyMs: 30, trustTestIp: true });
+// The waitlist switch (site.config.json, CPO order TC-006). By default this
+// checks public/ as published. With WAITLIST=open it checks a temporary copy
+// with the real form put back (tools/waitlist.mjs), so the form stays fully
+// tested while the list is closed. npm test runs both.
+const OPEN = process.env.WAITLIST === 'open';
+let root;
+if (OPEN) {
+  const { cpSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  root = path.join(mkdtempSync(path.join(tmpdir(), 'ronna-open-')), 'public');
+  cpSync(path.join(here, '..', 'public'), root, { recursive: true });
+  (await import('../tools/waitlist.mjs')).apply(true, root);
+}
+const site = await startServer({ port: 0, emulateAccess: false, minReplyMs: 30, trustTestIp: true, root });
 const BASE = `http://127.0.0.1:${site.port}`;
 let ipSeq = 0;
 const freshIp = () => `10.99.${Math.floor(++ipSeq / 250)}.${ipSeq % 250}`;
@@ -196,8 +209,8 @@ try {
     await ctx.close();
   }
 
-  // Keyboard order and visible focus on the form (issue #14).
-  {
+  // Keyboard order and visible focus on the form (issue #14). Only when the form is there.
+  if (OPEN) {
     const ctx = await newContext({ viewport: { width: 1280, height: 900 } });
     const here = (page) => page.evaluate(() => {
       const el = document.activeElement;
@@ -283,10 +296,15 @@ try {
       const page = await open(ctx);
       const email = 'e2e-person@example.com';
       secrets.push(email);
-      await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-      await page.fill('#waitlist-email', email);
-      await page.click('form[data-waitlist] button[type=submit]');
-      await page.waitForSelector('[data-step=confirm]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e signup: no confirm step'));
+      if (OPEN) {
+        await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+        await page.fill('#waitlist-email', email);
+        await page.click('form[data-waitlist] button[type=submit]');
+        await page.waitForSelector('[data-step=confirm]:not([hidden])', { timeout: 5000 }).catch(() => fail('e2e signup: no confirm step'));
+      } else {
+        // List closed: no form on the site; sign up through the Worker to test the rest of the flow.
+        await harness.call(site.env, '/api/signup', { email }, { ip: freshIp() });
+      }
       const mail = lastMailTo(email);
       if (!mail) fail('e2e signup: no confirm email captured');
       const token = harness.tokenFrom(mail, 'confirm');
@@ -506,12 +524,28 @@ try {
 
       if (p === '/' || p === '/what/') {
         if ((await page.getAttribute('.hero .btn--ghost', 'href')) !== '/how/') fail(`${tag} ${p}: "How it works" does not open /how/`);
-        const slot = await page.locator('[data-slot=human-check]').boundingBox();
-        const want = width < 332 ? [150, 140] : [300, 65];
-        if (!slot || Math.round(slot.width) !== want[0] || Math.round(slot.height) !== want[1]) fail(`${tag} ${p}: human-check slot is ${slot && Math.round(slot.width)}x${slot && Math.round(slot.height)}, want ${want.join('x')}`);
         // Households only (w04 addendum): no switch, no business copy anywhere on the page.
         if (await page.locator('.switch, input[name=audience], [data-aud]').count()) fail(`${tag} ${p}: the Home | Business switch is still there`);
         if (/business/i.test(await page.locator('body').innerText())) fail(`${tag} ${p}: business wording on the page`);
+      }
+      if (!OPEN && (p === '/' || p === '/what/')) {
+        // List closed (TC-006): one plain line, no field, no button, and nothing is posted, with or without JS.
+        if (!(await visible(page, '[data-list-closed]')) || (await page.locator('[data-list-closed]').innerText()).trim() !== 'The list opens soon. Check back here.') fail(`${tag} ${p}: closed line missing`);
+        if (await page.locator('main form, main input, main button, main textarea, main select').count()) fail(`${tag} ${p}: a form control is on the page while the list is closed`);
+        if (/human check/i.test(await page.locator('main').innerText())) fail(`${tag} ${p}: the human-check slot is on the page while the list is closed`);
+        const sent = [];
+        page.on('request', (r) => { if (r.method() !== 'GET' || r.url().includes('/api/')) sent.push(`${r.method()} ${r.url()}`); });
+        await page.click('.hero .btn:not(.btn--ghost)');
+        await page.waitForTimeout(300);
+        if (!(await page.locator('[data-list-closed]').isVisible())) fail(`${tag} ${p}: "Put us on the list" does not lead to the closed line`);
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(300);
+        if (sent.length) fail(`${tag} ${p}: the closed page sent ${sent.join(', ')}`);
+      }
+      if (OPEN && (p === '/' || p === '/what/')) {
+        const slot = await page.locator('[data-slot=human-check]').boundingBox();
+        const want = width < 332 ? [150, 140] : [300, 65];
+        if (!slot || Math.round(slot.width) !== want[0] || Math.round(slot.height) !== want[1]) fail(`${tag} ${p}: human-check slot is ${slot && Math.round(slot.width)}x${slot && Math.round(slot.height)}, want ${want.join('x')}`);
 
         // Steps, with JS. The only request is a same-origin POST to /api/signup.
         const sent = [];
@@ -574,7 +608,7 @@ if (problems.length) {
   for (const p of problems) console.log('  ' + p);
   process.exit(1);
 }
-console.log(`OK: ${PAGES.length} pages at 320, 390 and 1280 px; no switch; steps and redirect work; nothing left the site`);
+console.log(`OK [waitlist ${OPEN ? 'open: the form, on a test copy' : 'closed: as published'}]: ${PAGES.length} pages at 320, 390 and 1280 px; no switch; ${OPEN ? 'form steps' : 'closed line, nothing posted'}; redirect works; nothing left the site`);
 console.log(`Weights (budget ${BUDGET / 1024} KB): ${weights.join(', ')}`);
 console.log(`axe-core: ${axeRuns.length} page states, no serious or critical issues${axeNotes.length ? '; notes: ' + axeNotes.join('; ') : ''}`);
 console.log(heroNote);

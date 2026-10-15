@@ -65,8 +65,10 @@
   }
 
   // ---------- the waitlist form on / and /what/ ----------
+  // While the list is closed (site.config.json, CPO order TC-006) the page has no
+  // form here, only a line, and this does nothing.
   var join = document.querySelector("[data-join]");
-  if (join) {
+  if (join && join.querySelector("form[data-waitlist]")) {
     var show = steps(join);
     var form = join.querySelector("form[data-waitlist]");
     var email = form.elements.email;
