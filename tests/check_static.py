@@ -273,6 +273,12 @@ def main():
             problems.append(f"{page}: the list is closed (site.config.json), so it must show only the closed line: no form, field or button")
         if open_list and (not re.search(r'<form[^>]*data-(waitlist|off-form|code-form)', live) or closed_line):
             problems.append(f"{page}: the list is open (site.config.json), so it must show its form")
+    # W-05(1): /how-mom-works/ exists only while the list is open, and only once Brand has signed it.
+    gated = os.path.join(ROOT, "how-mom-works", "index.html")
+    if not open_list and os.path.exists(gated):
+        problems.append("how-mom-works/: published while the list is closed")
+    if open_list and os.path.exists(gated) and 'content="brand-unsigned"' in open(gated, encoding="utf-8").read():
+        problems.append("how-mom-works/: the list is open but Brand has not signed the copy (meta ronna-copy)")
 
     for line in headers.splitlines():
         if line.lstrip().startswith("#") and line[:1].isspace():

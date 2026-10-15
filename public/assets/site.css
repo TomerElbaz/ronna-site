@@ -324,6 +324,19 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
 .member-codes .codes li { flex-wrap: wrap; }
 .member-codes .new-code-text { font-size: clamp(17px, 4.6vw, 22px); }
 
+/* /how-mom-works/: the chat loop, five steps with made-up examples (W-05(1)) */
+.loop { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 32px; max-width: 720px; }
+.loop-step { border-top: 1px solid var(--edge); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.loop-step h3 { margin: 0; font-size: 22px; font-weight: 700; font-stretch: 112%; color: var(--ink); }
+.chat { margin: 4px 0 0; padding: 12px 14px; border: 1px solid var(--edge); border-radius: 4px; display: flex; flex-direction: column; gap: 8px; max-width: 480px; }
+.chat-tag { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.chat p { margin: 0; color: var(--ink); }
+.chat-you::before { content: "You: "; color: var(--dim); }
+.chat-mom::before { content: "MOM: "; color: var(--mom); }
+.chat-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.chat-go { font-weight: 700; font-size: 14px; padding: 6px 14px; border-radius: 3px; background: var(--ink); color: var(--ground); }
+.coming { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); border: 1px solid var(--edge); border-radius: 3px; padding: 2px 6px; }
+
 /* /how/: three steps */
 .how-steps {
   list-style: none; margin: 0; padding: 0;
