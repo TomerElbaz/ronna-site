@@ -170,7 +170,10 @@
 
   // ---------- /off/: #d=<token> opens a Delete button (rule 73(6)); otherwise a request form ----------
   var offRoot = document.querySelector("[data-off]");
-  if (offRoot) {
+  // While the list is closed (site.config.json) this page has no form: clear any
+  // #d= from the address bar and do nothing else.
+  if (offRoot && !offRoot.querySelector("form[data-off-form]")) takeFragment("d");
+  if (offRoot && offRoot.querySelector("form[data-off-form]")) {
     var showO = steps(offRoot);
     var del = takeFragment("d");
     if (del) {
@@ -214,7 +217,9 @@
 
   // ---------- /invite/: #code=<code> or typed; POST bodies only ----------
   var inviteRoot = document.querySelector("[data-invite]");
-  if (inviteRoot) {
+  // While the list is closed: no form; clear any #code= and do nothing else.
+  if (inviteRoot && !inviteRoot.querySelector("form[data-code-form]")) takeFragment("code");
+  if (inviteRoot && inviteRoot.querySelector("form[data-code-form]")) {
     var showI = steps(inviteRoot);
     var codeForm = inviteRoot.querySelector("form[data-code-form]");
     var codeInput = codeForm.elements.code;

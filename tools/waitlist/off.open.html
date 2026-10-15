@@ -1,0 +1,38 @@
+        <div class="step stack" data-step="form" data-title="Take me off the list">
+          <p class="lede">Enter your email and we'll send you a link. Open it and press Delete; the address is gone at once.</p>
+          <form class="form" action="" method="post" data-off-form novalidate>
+            <div class="field">
+              <label for="off-email">Email</label>
+              <input id="off-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="off-error">
+            </div>
+            <button class="btn" type="submit">Send me the link</button>
+            <p class="notice" id="off-error" role="alert" hidden>Enter the email address you joined with.</p>
+          </form>
+          <p class="fine">Or reply to any email from us asking to leave, and we'll remove the address by hand within 7 days.</p>
+        </div>
+        <div class="step stack" data-step="sent" data-title="Check your email." tabindex="-1" hidden>
+          <p class="lede">If that address is on the list, we've sent a link. Open it and press Delete.</p>
+        </div>
+        <!-- Rule 73(6): the emailed link opens this step; the address goes only when Delete is pressed. -->
+        <div class="step stack" data-step="ready" data-title="Take me off the list" tabindex="-1" hidden>
+          <p class="lede">Press Delete to take this address off the list. It's gone at once.</p>
+          <button class="btn" type="button" data-delete-button>Delete</button>
+          <!-- Rule 72(b)(2): a member revokes their codes from their own link. Words: web desk draft for Brand (w04). -->
+          <p class="fine">Or stay on the list and cancel your invite codes. Codes nobody has used stop working at once.</p>
+          <button class="btn btn--ghost" type="button" data-revoke-button>Cancel my invite codes</button>
+        </div>
+        <div class="step stack" data-step="revoked" data-title="Invite codes cancelled" tabindex="-1" hidden>
+          <p class="lede">Your unused invite codes no longer work. You're still on the list.</p>
+          <a class="btn" href="/">Back to home</a>
+        </div>
+        <div class="step stack" data-step="working" data-title="One moment" tabindex="-1" hidden>
+          <p class="lede">One moment.</p>
+        </div>
+        <div class="step stack" data-step="deleted" data-title="You're off the list" tabindex="-1" hidden>
+          <p class="lede">The address is gone from the list.</p>
+          <a class="btn" href="/">Back to home</a>
+        </div>
+        <div class="step stack" data-step="bad" data-title="That link didn't work" tabindex="-1" hidden>
+          <p class="lede">That link has expired or was already used. Ask for a new one below.</p>
+          <a class="btn" href="/off/">Take me off the list</a>
+        </div>

@@ -342,7 +342,7 @@ try {
     }
 
     // 1b. A friend uses a member code: "Invited by a friend", join, confirm; the link is emptied on spend (rule 72(c)(3)).
-    {
+    if (OPEN) { // /invite/ and /off/ have their forms only while the list is open
       const ctx = await newContext({ viewport: { width: 390, height: 844 } });
       const page = await open(ctx);
       const email = 'e2e-friend@example.com';
@@ -372,7 +372,7 @@ try {
     }
 
     // 1c. The member's own link (rule 73(6)): opening it deletes nothing; Cancel revokes the codes; Delete removes the address.
-    {
+    if (OPEN) { // /invite/ and /off/ have their forms only while the list is open
       const ctx = await newContext({ viewport: { width: 390, height: 844 } });
       const page = await open(ctx);
       const count = () => site.env.DB.rows('SELECT COUNT(*) AS n FROM signups WHERE email = ?', member.email)[0].n;
@@ -456,7 +456,7 @@ try {
     }
 
     // 3. Invite: /invite/#code=…, "Invited by" + the name only, join, confirm. No code in any URL.
-    {
+    if (OPEN) { // /invite/ and /off/ have their forms only while the list is open
       const ctx = await newContext({ viewport: { width: 390, height: 844 } });
       const page = await open(ctx);
       const email = 'e2e-invitee@example.com';
@@ -490,6 +490,29 @@ try {
       if ((await page.locator('[data-bad]').innerText()).trim() !== "This invite isn't valid.") fail('e2e invite: bad-code reply wording');
       await axeOn(page, '/invite/ (bad code)');
       await cspCheck(page, '/invite/');
+      await ctx.close();
+    }
+
+    // List closed (CPO order, 15 Oct): /off/ and /invite/ show the "opens soon" line, with or
+    // without a link's #d= or #code=, offer nothing to fill in, and post nothing.
+    if (!OPEN) {
+      const ctx = await newContext({ viewport: { width: 390, height: 844 } });
+      for (const u of ['/off/', `/off/#d=${member.del}`, '/invite/', `/invite/#code=${member.codes[0]}`]) {
+        const page = await open(ctx);
+        const sent = [];
+        page.on('request', (r) => { if (r.method() !== 'GET' || r.url().includes('/api/')) sent.push(`${r.method()} ${r.url()}`); });
+        await page.goto(BASE + u, { waitUntil: 'networkidle' });
+        const tag = `closed ${u.replace(/#.*/, '#…')}`;
+        if (!(await visible(page, '[data-list-closed]')) || (await page.locator('[data-list-closed]').innerText()).trim() !== 'The list opens soon. Check back here.') fail(`${tag}: no "opens soon" line`);
+        if (await page.locator('main form, main input, main button, main textarea, main select').count()) fail(`${tag}: a form control is on the page while the list is closed`);
+        if (page.url().includes('#')) fail(`${tag}: the link's token or code was left in the address bar`);
+        await page.waitForTimeout(300);
+        if (sent.length) fail(`${tag}: sent ${sent.join(', ')}`);
+        await axeOn(page, `${u.replace(/#.*/, '')} (closed)`);
+        await cspCheck(page, u.replace(/#.*/, ''));
+        await page.close();
+      }
+      if (site.env.DB.rows('SELECT COUNT(*) AS n FROM signups WHERE email = ?', member.email)[0].n !== 1) fail('closed /off/#d=: the address changed while the list is closed');
       await ctx.close();
     }
 

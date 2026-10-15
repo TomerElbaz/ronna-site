@@ -30,12 +30,13 @@ deployed**. See [Waitlist Worker](#waitlist-worker).
 The site is for households only (CPO order w04 addendum): no Home | Business
 switch, no business copy, and the static check fails on any business word.
 
-**The waitlist is closed until go-live** (CPO order TC-006). One flag,
-`site.config.json` → `"waitlistOpen"`, decides what the join section of `/`
-and `/what/` holds. While it is `false`, it holds one line, "The list opens
-soon. Check back here.", with no email field, no button, and nothing posted.
+**The waitlist is closed until go-live** (CPO orders TC-006 and 15 Oct). One
+flag, `site.config.json` → `"waitlistOpen"`, decides what the list's pages
+hold: the join section of `/` and `/what/`, and the working part of `/off/`
+and `/invite/`. While it is `false`, each holds one line, "The list opens
+soon. Check back here.", with no field, no button, and nothing posted.
 Pages has no build step, so `npm run waitlist` applies the flag to `public/`
-(from `tools/waitlist/open.html` or `closed.html`), and `npm test` fails if
+(from `tools/waitlist/<block>.open.html` or `.closed.html`), and `npm test` fails if
 `public/` and the flag disagree. **At go-live:** set `"waitlistOpen": true`,
 run `npm run waitlist`, and commit. The real form comes back unchanged.
 `npm test` checks the published closed site and an open copy, so the form
