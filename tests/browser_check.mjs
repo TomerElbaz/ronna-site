@@ -541,12 +541,15 @@ try {
     if (urls.length < 20) fail(`e2e: too few requests recorded (${urls.length}); the URL check would prove nothing`);
   }
 
+  // B-115: the site's fonts are exactly the three it already self-hosts; R27 adds none.
+  const FONTS = new Set(['archivo-latin-wdth-normal.woff2', 'ibm-plex-mono-latin-400-normal.woff2', 'ibm-plex-mono-latin-500-normal.woff2']);
   for (const [width, height, tag] of WIDTHS) {
     const ctx = await newContext({ viewport: { width, height } });
     for (const p of PAGES) {
       const page = await ctx.newPage();
       const is404 = p === '/no-such-page';
       page.on('request', (r) => { if (!r.url().startsWith(BASE)) fail(`${tag} ${p}: off-site request ${r.url()}`); });
+      page.on('request', (r) => { if (r.resourceType() === 'font' && !FONTS.has(r.url().split('/').pop())) fail(`${tag} ${p}: new font requested ${r.url()}`); });
       page.on('requestfailed', (r) => fail(`${tag} ${p}: request failed ${r.url()}`));
       page.on('pageerror', (e) => fail(`${tag} ${p}: script error ${e}`));
       page.on('console', (m) => {
@@ -586,6 +589,15 @@ try {
         if (r.cut.length) fail(`${tag} ${p}${label}: cut off at right edge: ${r.cut.join(' | ')}`);
       };
       await fit('');
+
+      // B-115: the header logo is R27, drawn, and at least 24 px.
+      const logo = await page.evaluate(() => {
+        const img = document.querySelector('.site-head .wordmark img.tile');
+        if (!img) return null;
+        const r = img.getBoundingClientRect();
+        return { src: img.getAttribute('src'), drawn: img.complete && img.naturalWidth > 0, w: r.width, h: r.height };
+      });
+      if (!logo || logo.src !== '/assets/r27.svg' || !logo.drawn || logo.w < 24 || logo.h < 24) fail(`${tag} ${p}: header logo is not R27 at 24 px or more: ${JSON.stringify(logo)}`);
 
       // Keyboard: first Tab lands on the skip link; every focus stop shows an outline
       // (for the switch, the outline sits on the radio's label).

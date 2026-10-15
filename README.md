@@ -111,7 +111,12 @@ headers, including a strict Content-Security-Policy, are in `public/_headers`.
 - Company mark: A, the element tile (picked 8 Oct). `public/favicon.svg` is its
   small-size cut (filled `#0B0C0E` tile, white R drawn as an outline, so it
   needs no web font); `favicon.ico` and `apple-touch-icon.png` are rendered
-  from it. The header pairs the tile with "RonnaOps" in mixed case.
+  from it. Those, and the share image, stay mark A until Brand says otherwise.
+- Header logo: **R27** (B-115, CPO 15 Oct), as MOM's sidebar draws it: white
+  `#FFFFFF` tile (rx 5), `#0B0C0E` letters, "27" in IBM Plex Mono 500 at 8 px
+  and "R" in Archivo 800 at 21 px, minimum 24 px. `public/assets/r27.svg` holds
+  both glyphs as outlines, so it loads no font (both fonts are SIL OFL 1.1). The
+  header pairs it with "RonnaOps" in mixed case.
   Gold (`#B5964D`) is used on the word MOM only. The one action color is
   white; the secondary button is outlined in `#6A707A` with white text.
 - Ground is carbon `#171A20` (UX's waitlist design). Cards sit on

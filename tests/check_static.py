@@ -261,6 +261,22 @@ def main():
         if len(lines) != 1 or not all(re.fullmatch(r"Photo: .+ on Unsplash", l.strip()) for l in lines):
             problems.append(f"index.html: photo credit lines {lines} must read 'Photo: [name] on Unsplash'")
 
+    # B-115: the header logo is the R27 mark, drawn as outlines (no text, so no font
+    # loads); the favicon, app icons and share image stay mark A.
+    r27 = open(os.path.join(ROOT, "assets", "r27.svg"), encoding="utf-8").read()
+    if re.search(r"<text|font-family|@font-face|@import|url\(|<image|href=", r27):
+        problems.append("assets/r27.svg: must be outlines only: no text, font, url or linked image")
+    if not re.search(r'<rect[^>]*rx="5"[^>]*fill="#FFFFFF"', r27) or r27.count('fill="#0B0C0E"') != 2:
+        problems.append("assets/r27.svg: want the white #FFFFFF tile (rx 5) and two #0B0C0E glyph paths")
+    for path in files:
+        if not path.endswith(".html"):
+            continue
+        html = open(path, encoding="utf-8").read()
+        if 'class="site-head"' in html and '<img class="tile" src="/assets/r27.svg"' not in html:
+            problems.append(f"{rel(path)}: header logo is not R27 (/assets/r27.svg)")
+        if 'rel="icon" href="/favicon.svg"' not in html:
+            problems.append(f"{rel(path)}: favicon must stay mark A (/favicon.svg) until Brand says otherwise")
+
     # The waitlist switch (CPO order TC-006).
     cfg = json.load(open(os.path.join(ROOT, "..", "site.config.json"), encoding="utf-8"))
     open_list = cfg.get("waitlistOpen") is True
