@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>You're on the list · RonnaOps</title>
+  <!-- Description from mom/21 v1.2 (DRAFT until Brand signs) -->
+  <meta name="description" content="Your place on the MOM waitlist.">
+  <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
+  <meta name="robots" content="noindex">
+  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.2 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="RonnaOps">
+  <meta property="og:title" content="You're on the list">
+  <meta property="og:description" content="Your place on the MOM waitlist.">
+  <meta property="og:url" content="https://ronna.mom/confirm/">
+  <meta property="og:image" content="https://ronna.mom/icon-512.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="RonnaOps mark: a square tile with the letter R">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="You're on the list">
+  <meta name="twitter:description" content="Your place on the MOM waitlist.">
+  <meta name="twitter:image" content="https://ronna.mom/icon-512.png">
+  <meta name="twitter:image:alt" content="RonnaOps mark: a square tile with the letter R">
+  <!-- Opened from links that may carry a token, so this page sends no referrer at all (DRAFT FOR CISO, issue #15). -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#171A20">
+  <link rel="preload" href="/assets/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-head">
+    <div class="wrap">
+      <a class="wordmark" href="/" aria-label="RonnaOps home"><img class="tile" src="/favicon.svg" alt="" width="32" height="32"><span>RonnaOps</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/#join">Waitlist</a>
+      </nav>
+    </div>
+  </header>
+
+  <!--
+    CONFIRM-EMAIL LANDING (rules 69.3, 72.6). The confirm email links to
+    /confirm/#t=<token>. The token sits after "#", so it never reaches a
+    server in a URL; /assets/site.js reads it, clears it from the address
+    bar, and sends it in a POST body only when the person clicks Confirm
+    (mail scanners open links; a click is needed). The place number comes
+    back from /api/confirm. No-referrer and no-store keep the token in.
+  -->
+  <main id="main">
+    <section class="hero hero--full" data-confirm>
+      <div class="wrap stack">
+        <p class="eyebrow"><span class="mom">MOM</span> waitlist</p>
+        <h1 data-heading>Confirm your place</h1>
+        <div class="step stack" data-step="none" data-title="Confirm your place">
+          <p class="lede">Open the link in the email we sent you. It works for 24 hours.</p>
+          <a class="btn btn--ghost" href="/#join">Put us on the list</a>
+        </div>
+        <div class="step stack" data-step="ready" data-title="Confirm your place" tabindex="-1" hidden>
+          <p class="lede">Press Confirm and you're on the list.</p>
+          <button class="btn" type="button" data-confirm-button>Confirm</button>
+        </div>
+        <div class="step stack" data-step="done" data-title="You're on the list" tabindex="-1" hidden>
+          <p class="place-num"><span class="sr-only">Place on the list: </span><span data-place>#</span></p>
+          <p class="lede">We'll email you when your invite is ready. Nothing else comes from us before then, unless you ask.</p> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
+          <!-- Rule 72.12: the referral line promises no move up the list. -->
+          <p class="referral">Your invite will come with codes for the people you want to bring.</p> <!-- [pending Tomer] CBO pick for the referral line (mom/21 v1.2, DRAFT); promises no move up the list (rule 72.12) -->
+          <a class="btn" href="/">Back to home</a>
+        </div>
+        <div class="step stack" data-step="bad" data-title="That link didn't work" tabindex="-1" hidden>
+          <p class="lede">That link has expired or was already used.</p>
+          <a class="btn" href="/#join">Put us on the list</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <p class="ten27"><span class="num" aria-hidden="true">10<sup>27</sup></span><span class="sr-only">10 to the 27th</span> Ronna is the metric prefix for 10 to the 27th, added to the SI in 2022.</p>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="/terms/">Terms</a>
+        <a href="/off/">Take me off the list</a>
+      </nav>
+      <span>RonnaOps · Austin, Texas</span>
+    </div>
+  </footer>
+</body>
+</html>

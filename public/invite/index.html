@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>You've been invited · RonnaOps</title>
+  <!-- noindex on every page until the CPO says the copy is live; X-Robots-Tag in /_headers too. -->
+  <meta name="robots" content="noindex">
+  <!-- Share tags (CPO order, issue #13). Title and description from mom/21 v1.2 (DRAFT); the image is mark A's tile. Pages stay noindex. -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="RonnaOps">
+  <meta property="og:title" content="Your MOM invite">
+  <meta property="og:description" content="Invites to MOM aren't open yet.">
+  <meta property="og:url" content="https://ronna.mom/invite/">
+  <meta property="og:image" content="https://ronna.mom/icon-512.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:image:alt" content="RonnaOps mark: a square tile with the letter R">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Your MOM invite">
+  <meta name="twitter:description" content="Invites to MOM aren't open yet.">
+  <meta name="twitter:image" content="https://ronna.mom/icon-512.png">
+  <meta name="twitter:image:alt" content="RonnaOps mark: a square tile with the letter R">
+  <!-- Opened from links that may carry a token, so this page sends no referrer at all (DRAFT FOR CISO, issue #15). -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#171A20">
+  <link rel="preload" href="/assets/fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="/icon-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="/icon-180.png">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-head">
+    <div class="wrap">
+      <a class="wordmark" href="/" aria-label="RonnaOps home"><img class="tile" src="/favicon.svg" alt="" width="32" height="32"><span>RonnaOps</span></a>
+      <nav class="nav" aria-label="Main">
+        <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/#join">Waitlist</a>
+      </nav>
+    </div>
+  </header>
+
+  <!--
+    INVITATION (rules 72 and 74). A code arrives as /invite/#code=XXXX-XXXX-XXXX-XXXX
+    or is typed below. /assets/site.js reads it from after "#", clears the
+    address bar, and sends it only in POST bodies (rule 72.3). The page shows
+    "Invited by" and the first name the inviter chose, nothing else (rule
+    72.4), inserted as text. Every bad code gets one reply: "This invite isn't
+    valid." (rule 72.5). MOM sends no invitations; the inviter shares the code.
+  -->
+  <main id="main">
+    <section class="hero" data-invite>
+      <div class="wrap stack">
+        <p class="eyebrow"><span class="mom">MOM</span> invite</p>
+        <h1 data-heading>You've been invited</h1>
+        <div class="step stack" data-step="code" data-title="You've been invited">
+          <form class="form" action="" method="post" data-code-form novalidate>
+            <div class="field">
+              <label for="invite-code">Invite code</label>
+              <input id="invite-code" name="code" type="text" class="code-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX" aria-describedby="code-error">
+            </div>
+            <button class="btn" type="submit">Continue</button>
+            <p class="notice" id="code-error" role="alert" hidden>Enter the 16-character code from your invite.</p>
+            <p class="notice" data-bad role="alert" hidden>This invite isn't valid.</p>
+          </form>
+        </div>
+        <div class="step stack" data-step="join" data-title="You've been invited" tabindex="-1" hidden>
+          <p class="invited">Invited by <strong data-invited-by></strong></p>
+          <form class="form" action="" method="post" data-invite-join novalidate>
+            <div class="field">
+              <label for="invite-email">Email</label>
+              <input id="invite-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" aria-describedby="invite-email-error">
+            </div>
+            <div class="hp"><label for="invite-website">Website</label><input id="invite-website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+            <!-- Rule 69.8 notice above the button; invitees' rows also keep who invited them (rule 72.9). Words: mom/21 v1.2 section 14. -->
+            <p class="keep" data-keep>We keep only your email, when you joined and who invited you.<br>Delete it any time with the link in every email, or at ronna.mom/off.</p>
+            <!-- Rule 72.12: no promise of moving up the list. -->
+            <p class="referral">Joining with a code doesn't move you up the list.</p>
+            <button class="btn" type="submit">Put us on the list</button>
+            <p class="notice" id="invite-email-error" role="alert" hidden>Enter an email address so your invite has somewhere to go.</p>
+          </form>
+        </div>
+        <div class="step stack" data-step="sent" data-title="Check your email." tabindex="-1" hidden>
+          <p class="lede">We sent you a link. Open it within 24 hours to confirm your place.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-foot">
+    <div class="wrap">
+      <p class="ten27"><span class="num" aria-hidden="true">10<sup>27</sup></span><span class="sr-only">10 to the 27th</span> Ronna is the metric prefix for 10 to the 27th, added to the SI in 2022.</p>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="/what/">What MOM is</a>
+        <a href="/how/">How it works</a>
+        <a href="/privacy/">Privacy</a>
+        <a href="/terms/">Terms</a>
+        <a href="/off/">Take me off the list</a>
+      </nav>
+      <span>RonnaOps · Austin, Texas</span>
+    </div>
+  </footer>
+</body>
+</html>
