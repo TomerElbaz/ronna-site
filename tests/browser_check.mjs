@@ -50,6 +50,8 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const here = path.dirname(fileURLToPath(import.meta.url));
 const shots = process.argv[2];
 const PAGES = ['/', '/what/', '/how/', '/privacy/', '/terms/', '/confirm/', '/invite/', '/off/', '/family/', '/no-such-page'];
+// W-05(1): /how-mom-works/ is published only while the list is open; checked on the open copy, and absent as published.
+if (process.env.WAITLIST === 'open') PAGES.splice(3, 0, '/how-mom-works/');
 const BUDGET = 150 * 1024;
 // Hero photos (CPO order, 9 Oct; Tomer approved 300 KB): outside the page
 // budget, each held to its own 300 KB, and only one loads on a first visit.
@@ -525,6 +527,12 @@ try {
       await ctx.close();
     }
 
+    // W-05(1): /how-mom-works/ is not published while the list is closed.
+    if (!OPEN) {
+      const res = await fetch(BASE + '/how-mom-works/');
+      if (res.status !== 404) fail(`closed: /how-mom-works/ answered ${res.status}, want 404 while the list is closed`);
+    }
+
     // invite-code-never-in-url (rule 72.3), and no token or email either.
     for (const u of urls) {
       const lower = decodeURIComponent(u).toLowerCase();
@@ -624,6 +632,12 @@ try {
 
       if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_') || '_'}.png`), fullPage: true });
 
+      if (p === '/how-mom-works/') {
+        const steps = (await page.locator('.loop-step h3').allTextContents()).map((t) => t.replace(/^Step \d: /, '').trim());
+        if (steps.join('|') !== 'Say it or snap it|MOM sends it to the right desk|The desk answers from what you already know|One line, then Go|Everything stays findable') fail(`${tag} /how-mom-works/: steps are ${steps.join(' | ')}`);
+        if ((await page.locator('.chat').count()) !== (await page.locator('.chat-tag').filter({ hasText: 'Example' }).count())) fail(`${tag} /how-mom-works/: an example is not labelled "Example"`);
+        if (await page.locator('main form, main input, main button').count()) fail(`${tag} /how-mom-works/: has a form control`);
+      }
       if (p === '/how/') {
         const titles = (await page.locator('.how-step h3').allTextContents()).map((t) => t.replace('Step 1: ', '').replace('Step 2: ', '').replace('Step 3: ', '').trim());
         if (titles.join('|') !== 'Tell MOM|MOM files it|You say Go') fail(`${tag} /how/: steps are ${titles.join(' | ')}`);

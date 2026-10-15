@@ -42,6 +42,13 @@ run `npm run waitlist`, and commit. The real form comes back unchanged.
 `npm test` checks the published closed site and an open copy, so the form
 stays tested meanwhile.
 
+**`/how-mom-works/`** (W-05(1), the chat loop for families) is a gated page:
+its source is `tools/waitlist/gated/how-mom-works/`, and `npm run waitlist`
+copies it into `public/` only while the list is open. It also carries
+`<meta name="ronna-copy" content="brand-unsigned">`: `npm test` fails if the
+list is open while the page is still unsigned, so it can't go live before
+Brand signs the copy.
+
 The main page, top to bottom (with the list open): a
 full-width hero (white "Put us on the list", outlined "How it works"), three
 facts, a box shelf of four cards with labelled placeholder images, the form
