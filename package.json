@@ -5,7 +5,8 @@
   "scripts": {
     "test": "npm run test:worker && npm run test:site",
     "test:worker": "node --disable-warning=ExperimentalWarning --test 'tests/worker/*.test.mjs'",
-    "test:site": "python3 tests/check_static.py && python3 tests/check_links.py && node --disable-warning=ExperimentalWarning tests/browser_check.mjs"
+    "test:site": "node tools/waitlist.mjs --check && python3 tests/check_static.py && python3 tests/check_links.py && node --disable-warning=ExperimentalWarning tests/browser_check.mjs && WAITLIST=open node --disable-warning=ExperimentalWarning tests/browser_check.mjs",
+    "waitlist": "node tools/waitlist.mjs"
   },
   "devDependencies": {
     "axe-core": "4.13.0",

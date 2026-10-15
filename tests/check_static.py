@@ -25,6 +25,9 @@ Fails if anything in the published tree:
     img-src is anything but 'self' (photos are served from the site, never
     hotlinked), or a photo credit that isn't plain "Photo: ... on Unsplash"
     text without a link,
+  - shows the waitlist form on / or /what/ while site.config.json says the list
+    is closed (CPO order TC-006: one line, no field, no button), or lacks the
+    closed line then; or, once it is open, lacks the form,
   - contains an em dash anywhere, or a [COPY] placeholder outside an HTML
     comment (copy v1.2, CPO order w03),
   - says "business" anywhere, keeps any piece of the Home | Business switch
@@ -36,6 +39,7 @@ tests/check_links.py.
 
 Run from the repo root:  python3 tests/check_static.py
 """
+import json
 import os
 import re
 import sys
@@ -255,6 +259,19 @@ def main():
         lines = re.findall(r">([^<]+)<", credit.group(0))
         if len(lines) != 1 or not all(re.fullmatch(r"Photo: .+ on Unsplash", l.strip()) for l in lines):
             problems.append(f"index.html: photo credit lines {lines} must read 'Photo: [name] on Unsplash'")
+
+    # The waitlist switch (CPO order TC-006).
+    cfg = json.load(open(os.path.join(ROOT, "..", "site.config.json"), encoding="utf-8"))
+    open_list = cfg.get("waitlistOpen") is True
+    for page in ("index.html", os.path.join("what", "index.html")):
+        html = open(os.path.join(ROOT, page), encoding="utf-8").read()
+        live = re.sub(r"<!--.*?-->", "", html, flags=re.S)
+        has_form = bool(re.search(r"<form\b|<input\b|<button\b", live))
+        closed_line = "The list opens soon. Check back here." in live
+        if not open_list and (has_form or not closed_line):
+            problems.append(f"{page}: the list is closed (site.config.json), so it must show only the closed line: no form, field or button")
+        if open_list and (not re.search(r'<form[^>]*data-waitlist', live) or closed_line):
+            problems.append(f"{page}: the list is open (site.config.json), so it must show the waitlist form")
 
     for line in headers.splitlines():
         if line.lstrip().startswith("#") and line[:1].isspace():

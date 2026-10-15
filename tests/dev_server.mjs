@@ -18,7 +18,8 @@ import { fileURLToPath } from "node:url";
 import worker from "../worker/src/index.js";
 import { accessClaims, makeEnv, signJwt } from "./worker/harness.mjs";
 
-const ROOT = path.normalize(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public"));
+// public/ by default; tests can serve another copy (the waitlist's open variant) with { root }.
+let ROOT = path.normalize(path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "public"));
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
   ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/vnd.microsoft.icon", ".woff2": "font/woff2",
@@ -78,7 +79,8 @@ function readBody(req) {
   });
 }
 
-export async function startServer({ port = 0, env, emulateAccess = false, minReplyMs, trustTestIp = false } = {}) {
+export async function startServer({ port = 0, env, emulateAccess = false, minReplyMs, trustTestIp = false, root } = {}) {
+  if (root) ROOT = path.normalize(root);
   const setup = env ? { env } : makeEnv({ minReplyMs: minReplyMs ?? 400 });
   const workerEnv = setup.env;
   if (!env) delete workerEnv.CLOCK; // real time for a running server
