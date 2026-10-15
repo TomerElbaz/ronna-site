@@ -156,7 +156,7 @@ export async function call(env, pathname, body, { ip = "203.0.113.7", jwt, origi
   const text = await res.text();
   let json = null;
   try { json = JSON.parse(text); } catch {}
-  return { status: res.status, body: json, text, ms };
+  return { status: res.status, body: json, text, ms, headers: res.headers };
 }
 
 export async function runCron(env) {

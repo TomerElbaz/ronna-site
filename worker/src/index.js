@@ -5,7 +5,9 @@
 //
 // Public routes (JSON POST only, same origin only):
 //   /api/signup, /api/confirm, /api/delete-request, /api/delete,
-//   /api/invite/lookup, /api/invite/redeem
+//   /api/codes/revoke, /api/invite/lookup, /api/invite/redeem
+// Member codes (rule 72(b), 72(c)): minted at confirm, shown once in that
+// reply only, revoked with the member's own delete link.
 // Family routes, behind the family Access application (FAMILY_AUD):
 //   /api/family/status, /enrol, /name, /mint, /revoke
 // Operator routes, behind the operator Access application (OPERATOR_AUD):
@@ -152,15 +154,21 @@ async function confirm(request, env) {
         "AND invite_code_id IS NOT NULL AND NOT EXISTS " +
         "(SELECT 1 FROM invite_codes c WHERE c.code_id = signups.invite_code_id AND c.status = 'used' AND c.used_at = ?2)",
     ).bind(h, t),
+    // Rule 72(c)(3): a spent member code keeps only its used status; the link goes.
+    env.DB.prepare(
+      `UPDATE signups SET invite_code_id = NULL WHERE email = ${tokenEmail} AND invite_code_id IN ` +
+        "(SELECT code_id FROM invite_codes WHERE member_email IS NOT NULL AND status = 'used' AND used_at = ?2)",
+    ).bind(h, t),
     env.DB.prepare("DELETE FROM tokens WHERE token_hash = ?1 AND kind = 'confirm' AND expires_at > ?2 RETURNING email").bind(h, t),
   ]);
-  const used = results[3].results || [];
+  const used = results[4].results || [];
   if (used.length !== 1) {
     log("confirm.invalid");
     return json({ ok: false });
   }
   if (results[1].meta.changes) log("invite.spent");
   if (results[2].meta.changes) log("invite.mark_dropped");
+  if (results[3].meta.changes) log("invite.link_emptied");
   const email = used[0].email;
   const mine = await first(env, "SELECT confirmed_at FROM signups WHERE email = ? AND status = 'confirmed'", email);
   if (!mine) {
@@ -174,7 +182,36 @@ async function confirm(request, env) {
     mine.confirmed_at, mine.confirmed_at, email,
   );
   log("confirm.ok");
-  return json({ ok: true, place: place.place });
+  const codes = await mintMemberCodes(env, email, t);
+  // The codes appear in this reply only (shown once, rule 72(b)(2)); json() sends no-store.
+  return json(codes ? { ok: true, place: place.place, codes, expiresAt: t + CODE_TTL } : { ok: true, place: place.place });
+}
+
+// Rule 72(b)(1), 72(c)(1), 72(c)(5): a member's codes are minted here only,
+// once, on the confirm their own single-use link reached. 3 each, 300 a day
+// site-wide, all or none: over the cap the member joins without codes.
+async function mintMemberCodes(env, email, t) {
+  const have = await first(env, "SELECT COUNT(*) AS n FROM invite_codes WHERE member_email = ?", email);
+  if (have.n > 0) return null;
+  const members = await bump(env, "member_mints", dayKey(t), "global");
+  if (members * LIMITS.codesPerMember > LIMITS.memberCodesPerDay) {
+    log("invite.member_capped");
+    return null;
+  }
+  const codes = [];
+  const stmts = [];
+  for (let i = 0; i < LIMITS.codesPerMember; i++) {
+    const code = newCode();
+    codes.push(code);
+    stmts.push(env.DB.prepare(
+      "INSERT INTO invite_codes (code_id, code_hash, member_email, status, created_at, expires_at) " +
+        "SELECT ?1, ?2, ?3, 'unused', ?4, ?5 WHERE EXISTS (SELECT 1 FROM signups WHERE email = ?3 AND status = 'confirmed')",
+    ).bind(newId("code_"), await codeHash(normaliseCode(code)), email, t, t + CODE_TTL));
+  }
+  const res = await env.DB.batch(stmts);
+  if (res.some((r) => !r.meta.changes)) return null;
+  log("invite.member_minted");
+  return codes;
 }
 
 // ---------- deletion (rule 69.9, 72.11) ----------
@@ -214,6 +251,13 @@ async function removeByEmailSql(env, emailExpr, ...args) {
       "UPDATE invite_codes SET status = 'unused', reserved_until = NULL WHERE status = 'reserved' " +
         `AND code_id = (SELECT invite_code_id FROM signups WHERE email = ${emailExpr})`,
     ).bind(...args),
+    // Rule 72(b)(6), 72(c)(7): friends linked to this member's codes lose the link
+    // (one holding a reservation can still confirm, without it); the codes
+    // themselves are deleted with the row (ON DELETE CASCADE).
+    env.DB.prepare(
+      "UPDATE signups SET invite_code_id = NULL WHERE invite_code_id IN " +
+        `(SELECT code_id FROM invite_codes WHERE member_email = ${emailExpr})`,
+    ).bind(...args),
     env.DB.prepare(`DELETE FROM signups WHERE email = ${emailExpr} RETURNING 1 AS gone`).bind(...args),
   ]);
 }
@@ -227,11 +271,33 @@ async function del(request, env) {
   }
   const h = await tokenHash(body.token);
   const results = await removeByEmailSql(env, "(SELECT email FROM tokens WHERE token_hash = ?1 AND kind = 'delete')", h);
-  if ((results[1].results || []).length !== 1) {
+  if ((results[2].results || []).length !== 1) {
     log("delete.invalid");
     return json({ ok: false });
   }
   log("delete.ok");
+  return json({ ok: true });
+}
+
+// Rule 72(b)(2): a member revokes their own codes from their own link (the
+// delete link every email carries). The address stays on the list.
+async function revokeMemberCodes(request, env) {
+  const { body, error } = await readJson(request, env);
+  if (error) return error;
+  if (typeof body.token !== "string" || body.token.length < 20 || body.token.length > 100) {
+    log("delete.invalid");
+    return json({ ok: false });
+  }
+  const h = await tokenHash(body.token);
+  const owner = await first(env, "SELECT email FROM tokens WHERE token_hash = ? AND kind = 'delete'", h);
+  if (!owner) {
+    log("delete.invalid");
+    return json({ ok: false });
+  }
+  const res = await env.DB.prepare(
+    "UPDATE invite_codes SET status = 'revoked', revoked_at = ? WHERE member_email = ? AND status IN ('unused', 'reserved')",
+  ).bind(now(env), owner.email).run();
+  if (res.meta.changes) log("invite.member_revoked");
   return json({ ok: true });
 }
 
@@ -266,9 +332,13 @@ async function badCode(env, gate, started, event) {
   return json(BAD_CODE); // same status, body and floor for every bad code (rule 72.5)
 }
 
+// A family code needs an active, named family; a member code needs only its
+// owner's row, which takes the code with it when it goes.
 const USABLE_CODE =
-  "SELECT c.code_id, c.family_id, f.display_first_name AS name FROM invite_codes c JOIN families f ON f.family_id = c.family_id " +
-  "WHERE c.code_hash = ? AND c.expires_at > ? AND f.status = 'active' AND f.display_first_name IS NOT NULL " +
+  "SELECT c.code_id, c.family_id, c.member_email IS NOT NULL AS member, f.display_first_name AS name " +
+  "FROM invite_codes c LEFT JOIN families f ON f.family_id = c.family_id " +
+  "WHERE c.code_hash = ? AND c.expires_at > ? " +
+  "AND (c.member_email IS NOT NULL OR (f.status = 'active' AND f.display_first_name IS NOT NULL)) " +
   "AND (c.status = 'unused' OR (c.status = 'reserved' AND c.reserved_until <= ?))";
 
 async function inviteLookup(request, env) {
@@ -283,7 +353,9 @@ async function inviteLookup(request, env) {
   if (!row) return badCode(env, gate, started, "invite.lookup_bad");
   log("invite.lookup_ok");
   await holdUntilFloor(started, env);
-  return json({ ok: true, invitedBy: row.name }); // the chosen first name, nothing else (rule 72.4)
+  // A family's chosen first name, nothing else (rule 72.4); a member code
+  // carries no name, and the page says "Invited by a friend" (rule 72(b)(3)).
+  return json(row.member ? { ok: true, invitedBy: null } : { ok: true, invitedBy: row.name });
 }
 
 async function inviteRedeem(request, env, ctx) {
@@ -320,7 +392,7 @@ async function inviteRedeem(request, env, ctx) {
   const reserved = await env.DB.prepare(
     "UPDATE invite_codes SET status = 'reserved', reserved_until = ?2 WHERE code_hash = ?1 AND expires_at > ?3 " +
       "AND (status = 'unused' OR (status = 'reserved' AND reserved_until <= ?3)) " +
-      "AND family_id IN (SELECT family_id FROM families WHERE status = 'active') RETURNING code_id, family_id",
+      "AND (member_email IS NOT NULL OR family_id IN (SELECT family_id FROM families WHERE status = 'active')) RETURNING code_id, family_id",
   ).bind(ch, t + CONFIRM_TTL, t).all();
   const won = (reserved.results || [])[0];
   if (!won) return badCode(env, gate, started, "invite.redeem_bad");
@@ -543,6 +615,7 @@ const PUBLIC = {
   "/api/confirm": confirm,
   "/api/delete-request": deleteRequest,
   "/api/delete": del,
+  "/api/codes/revoke": revokeMemberCodes,
   "/api/invite/lookup": inviteLookup,
   "/api/invite/redeem": inviteRedeem,
 };

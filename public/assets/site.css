@@ -319,6 +319,11 @@ p { margin: 0; color: var(--dim); max-width: 62ch; }
   font-family: var(--mono); font-size: 14px; color: var(--dim);
 }
 
+/* /confirm/: a member's invite codes, shown once */
+.member-codes { border: 1px dashed var(--ink); border-radius: 4px; padding: 16px; max-width: 520px; }
+.member-codes .codes li { flex-wrap: wrap; }
+.member-codes .new-code-text { font-size: clamp(17px, 4.6vw, 22px); }
+
 /* /how/: three steps */
 .how-steps {
   list-style: none; margin: 0; padding: 0;

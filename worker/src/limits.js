@@ -15,6 +15,8 @@ export const LIMITS = {
   inviteFailuresToLock: 10,  // rule 72.8: 10 failures in an hour lock the hash for the hour
   redeemsPerDay: 200,        // rule 74.3: site-wide
   mintsPerOwnerDay: 20,      // rule 74.3
+  codesPerMember: 3,         // rule 72(c)(5)
+  memberCodesPerDay: 300,    // rule 72(c)(5): site-wide; over it the member joins without codes
 };
 
 export async function ipHash(env, request, t) {

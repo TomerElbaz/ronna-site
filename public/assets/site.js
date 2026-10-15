@@ -103,6 +103,49 @@
 
   // ---------- /confirm/: #t=<token>, spent only on a click ----------
   var confirmRoot = document.querySelector("[data-confirm]");
+
+  // A member's codes (rule 72(b)): shown once, from the confirm reply only.
+  // They live in the page's text and the clipboard, never in a URL or storage.
+  function showMemberCodes(codes) {
+    var box = confirmRoot.querySelector("[data-member-codes]");
+    var list = confirmRoot.querySelector("[data-member-code-list]");
+    if (!box || !list || !Array.isArray(codes) || !codes.length) return;
+    list.textContent = "";
+    codes.forEach(function (c) {
+      if (typeof c !== "string" || !/^[0-9A-Z]{4}(-[0-9A-Z]{4}){3}$/.test(c)) return;
+      var li = document.createElement("li");
+      var text = document.createElement("span");
+      text.className = "new-code-text";
+      text.textContent = c;
+      var copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "btn btn--ghost btn--small";
+      copy.textContent = "Copy link";
+      copy.setAttribute("aria-label", "Copy the invite link for " + c);
+      copy.addEventListener("click", function () {
+        var link = location.origin + "/invite/#code=" + c;
+        var done = function () { copy.textContent = "Copied"; };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(done, function () { selectText(text); });
+        } else {
+          selectText(text);
+        }
+      });
+      li.appendChild(text);
+      li.appendChild(copy);
+      list.appendChild(li);
+    });
+    box.hidden = !list.children.length;
+  }
+
+  function selectText(el) {
+    var range = document.createRange();
+    range.selectNodeContents(el);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
   if (confirmRoot) {
     var showC = steps(confirmRoot);
     var token = takeFragment("t");
@@ -115,6 +158,7 @@
           token = null;
           if (r.body && r.body.ok) {
             confirmRoot.querySelector("[data-place]").textContent = "#" + String(r.body.place);
+            showMemberCodes(r.body.codes);
             showC("done");
           } else {
             showC("bad");
@@ -124,15 +168,33 @@
     }
   }
 
-  // ---------- /off/: #d=<token> deletes in one click; otherwise a request form ----------
+  // ---------- /off/: #d=<token> opens a Delete button (rule 73(6)); otherwise a request form ----------
   var offRoot = document.querySelector("[data-off]");
-  if (offRoot) {
+  // While the list is closed (site.config.json) this page has no form: clear any
+  // #d= from the address bar and do nothing else.
+  if (offRoot && !offRoot.querySelector("form[data-off-form]")) takeFragment("d");
+  if (offRoot && offRoot.querySelector("form[data-off-form]")) {
     var showO = steps(offRoot);
     var del = takeFragment("d");
     if (del) {
-      showO("working", false);
-      post("/api/delete", { token: del }).then(function (r) {
-        showO(r.body && r.body.ok ? "deleted" : "bad");
+      showO("ready", false);
+      offRoot.querySelector("[data-delete-button]").addEventListener("click", function () {
+        if (!del) return;
+        var t = del;
+        del = null;
+        showO("working");
+        post("/api/delete", { token: t }).then(function (r) {
+          showO(r.body && r.body.ok ? "deleted" : "bad");
+        });
+      });
+      offRoot.querySelector("[data-revoke-button]").addEventListener("click", function () {
+        if (!del) return;
+        var t = del;
+        del = null;
+        showO("working");
+        post("/api/codes/revoke", { token: t }).then(function (r) {
+          showO(r.body && r.body.ok ? "revoked" : "bad");
+        });
       });
     } else {
       showO("form", false);
@@ -155,7 +217,9 @@
 
   // ---------- /invite/: #code=<code> or typed; POST bodies only ----------
   var inviteRoot = document.querySelector("[data-invite]");
-  if (inviteRoot) {
+  // While the list is closed: no form; clear any #code= and do nothing else.
+  if (inviteRoot && !inviteRoot.querySelector("form[data-code-form]")) takeFragment("code");
+  if (inviteRoot && inviteRoot.querySelector("form[data-code-form]")) {
     var showI = steps(inviteRoot);
     var codeForm = inviteRoot.querySelector("form[data-code-form]");
     var codeInput = codeForm.elements.code;
@@ -176,9 +240,18 @@
     function lookUp(value) {
       badLine.hidden = true;
       post("/api/invite/lookup", { code: value }).then(function (r) {
-        if (r.body && r.body.ok && typeof r.body.invitedBy === "string") {
+        if (r.body && r.body.ok && (typeof r.body.invitedBy === "string" || r.body.invitedBy === null)) {
           code = value;
-          inviteRoot.querySelector("[data-invited-by]").textContent = r.body.invitedBy;
+          var line = inviteRoot.querySelector("[data-invited]");
+          if (r.body.invitedBy === null) {
+            line.textContent = "Invited by a friend";
+          } else {
+            var who = document.createElement("strong");
+            who.setAttribute("data-invited-by", "");
+            who.textContent = r.body.invitedBy;
+            line.textContent = "Invited by ";
+            line.appendChild(who);
+          }
           showI("join");
         } else {
           code = null;

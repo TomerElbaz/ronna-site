@@ -11,7 +11,7 @@ const EVENTS = new Set([
   "invite.lookup_ok", "invite.lookup_bad", "invite.reserved", "invite.redeem_bad",
   "invite.locked", "invite.capped", "invite.spent", "invite.mark_dropped",
   "invite.minted", "invite.mint_refused_cap", "invite.mint_refused_daily", "invite.mint_refused_name",
-  "invite.revoked", "family.enrolled", "family.enrol_refused", "family.named", "family.left",
+  "invite.revoked", "invite.member_minted", "invite.member_capped", "invite.member_revoked", "invite.link_emptied", "family.enrolled", "family.enrol_refused", "family.named", "family.left",
   "family.created", "family.enrolment_code", "operator.delete",
   "access.refused", "send.ok", "send.error", "send.disabled",
   "cron.cleaned", "request.error", "log.refused",

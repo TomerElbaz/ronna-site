@@ -400,12 +400,12 @@ describe("72.9 what is stored, and what the inviter sees", () => {
     assert.equal(states[b.id], "unused");
     for (const c of r.body.codes) assert.deepEqual(Object.keys(c).sort(), ["expiresAt", "id", "state"]);
   });
-  it("tables hold only rule 72.9's fields (plus rule 74.1's owner link)", () => {
+  it("tables hold only rule 72.9's fields (plus rule 74.1's owner link and rule 72(c)(2)'s member owner)", () => {
     const { env } = makeEnv();
     const cols = (t) => env.DB.rows(`PRAGMA table_info(${t})`).map((c) => c.name);
     assert.deepEqual(cols("families"), ["family_id", "display_first_name", "status", "created_at", "left_at"]);
     assert.deepEqual(cols("family_owners"), ["family_id", "owner_access_id"]);
-    assert.deepEqual(cols("invite_codes"), ["code_id", "code_hash", "family_id", "status", "created_at", "expires_at", "reserved_until", "used_at", "revoked_at"]);
+    assert.deepEqual(cols("invite_codes"), ["code_id", "code_hash", "family_id", "member_email", "status", "created_at", "expires_at", "reserved_until", "used_at", "revoked_at"]);
     assert.deepEqual(cols("enrolment_codes"), ["code_hash", "family_id", "expires_at"]);
   });
 });

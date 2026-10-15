@@ -1,6 +1,8 @@
 # Invite codes for waitlist members: brief (w02)
 
-FOR the CPO, then the CISO. **Brief only. Nothing is built or deployed.** Branch `claude/elegant-fermi-az6y0a`, based on 3a8d961.
+**Cleared by the CISO under rules 72(b) and 72(c), and built (CPO order w04):** `worker/`, `public/confirm/`, `public/invite/`, `public/off/`, tested in `tests/worker/rule72bc.test.mjs` and `tests/browser_check.mjs`. Rule 72(c)'s seven answers replace §6's questions. Not deployed.
+
+FOR the CPO, then the CISO. Written as a brief before the build. Branch `claude/elegant-fermi-az6y0a`, based on 3a8d961.
 
 How to read the marks:
 - **VERIFIED** means the Worker already does this at 3a8d961 (`worker/`, tested in `tests/worker/`), under CISO rules 69, 72 and 74.

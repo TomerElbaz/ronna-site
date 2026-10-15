@@ -73,8 +73,22 @@
         <div class="step stack" data-step="done" data-title="You're on the list" tabindex="-1" hidden>
           <p class="place-num"><span class="sr-only">Place on the list: </span><span data-place>#</span></p>
           <p class="lede">We'll email you when your invite is ready. Nothing else comes from us before then, unless you ask.</p> <!-- [ciso] (mom/21 v1.2, DRAFT) -->
-          <!-- Rule 72.12: the referral line promises no move up the list. -->
-          <p class="referral">Your invite will come with codes for the people you want to bring.</p> <!-- [pending Tomer] CBO pick for the referral line (mom/21 v1.2, DRAFT); promises no move up the list (rule 72.12) -->
+          <!--
+            Member invite codes (rules 72(b), 72(c)): minted at this confirm and
+            shown here once, from the confirm reply only. Never in the URL, never
+            stored by this page, never emailed. Over the daily cap the block stays
+            hidden and the member joins without codes. Words: web desk draft for
+            Brand (w04); the v1.2 referral line "Your invite will come with codes
+            for the people you want to bring." is superseded by rule 72(c)(1).
+          -->
+          <div class="member-codes stack" data-member-codes hidden>
+            <h2 class="codes-title">Your invite codes</h2>
+            <p>Three codes for people you want to bring. Each works once, within 30 days.</p>
+            <ul class="codes" data-member-code-list></ul>
+            <p class="fine">You'll see these codes only once. We don't email them, so copy them now.</p>
+            <p class="referral">A code doesn't move anyone up the list, you included.</p>
+            <p class="fine">To cancel codes nobody has used, open the link in any email from us.</p>
+          </div>
           <a class="btn" href="/">Back to home</a>
         </div>
         <div class="step stack" data-step="bad" data-title="That link didn't work" tabindex="-1" hidden>
