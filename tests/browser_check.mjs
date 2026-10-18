@@ -24,7 +24,7 @@
 //   - a hero photo is over 300 KB, the wrong one loads (a first visit loads
 //     only Home; 1000 px files on phones), or
 //     any hero text falls below WCAG AA against the brightest pixel behind it
-//     (tests/hero_contrast.mjs), at 320, 390, 820, 1024, 1025, 1280 and 1920 px,
+//     (tests/hero_contrast.mjs), at 320, 360, 390, 820, 1024, 1025, 1280 and 1920 px,
 //   - axe-core finds any serious or critical accessibility issue on any page,
 //     in every state (the page, the email error, the confirm step),
 //   - Tab does not walk the form in order (email, button, Privacy) with a
@@ -50,6 +50,8 @@ const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const here = path.dirname(fileURLToPath(import.meta.url));
 const shots = process.argv[2];
 const PAGES = ['/', '/what/', '/how/', '/privacy/', '/terms/', '/confirm/', '/invite/', '/off/', '/family/', '/no-such-page'];
+// W-05(1): /how-mom-works/ is published only while the list is open; checked on the open copy, and absent as published.
+if (process.env.WAITLIST === 'open') PAGES.splice(3, 0, '/how-mom-works/');
 const BUDGET = 150 * 1024;
 // Hero photos (CPO order, 9 Oct; Tomer approved 300 KB): outside the page
 // budget, each held to its own 300 KB, and only one loads on a first visit.
@@ -57,7 +59,8 @@ const PHOTO_BUDGET = 300 * 1024;
 const isHeroPhoto = (url) => /\/assets\/hero\/[a-z]+-\d+\.webp$/.test(url);
 const AXE = readFileSync(process.env.AXE_PATH || createRequire(import.meta.url).resolve('axe-core/axe.min.js'), 'utf8');
 const AXE_FAIL = new Set(['serious', 'critical']);
-const WIDTHS = [[320, 640, 'w320'], [390, 844, 'w390'], [1280, 900, 'desktop']];
+// W-05(2): 360 px is the phone width the CPO named; 320 and 390 stay as the edges.
+const WIDTHS = [[320, 640, 'w320'], [360, 740, 'w360'], [390, 844, 'w390'], [1280, 900, 'desktop']];
 
 // The site and the waitlist Worker, in this process (tests/dev_server.mjs).
 const { startServer } = await import('./dev_server.mjs');
@@ -155,7 +158,7 @@ try {
     for (const f of files) if (statSync(path.join(dir, f)).size > PHOTO_BUDGET) fail(`hero photo ${f} is over ${PHOTO_BUDGET / 1024} KB on disk`);
     const { heroContrast } = await import('./hero_contrast.mjs');
     let worst = Infinity;
-    for (const [width, height] of [[320, 640], [390, 844], [820, 1000], [1024, 768], [1025, 768], [1280, 900], [1920, 1080]]) {
+    for (const [width, height] of [[320, 640], [360, 740], [390, 844], [820, 1000], [1024, 768], [1025, 768], [1280, 900], [1920, 1080]]) {
       for (const aud of ['home']) {
         const ctx = await newContext({ viewport: { width, height } });
         const page = await ctx.newPage();
@@ -178,9 +181,14 @@ try {
     heroNote = `hero photos: worst text contrast is ${worst.toFixed(2)}× the WCAG AA minimum`;
   }
 
-  // Accessibility (issue #14): axe-core on every page and every state.
-  {
-    const ctx = await newContext({ bypassCSP: true, viewport: { width: 1280, height: 900 } });
+  // Accessibility (issue #14, W-05(2)): axe-core on every page and every state, with the
+  // device set to dark and to light, at desktop and phone width. The site is dark by
+  // design (color-scheme: dark): in both settings it must keep its own ground and text
+  // colours, so contrast never depends on the visitor's theme.
+  const GROUND = 'rgb(23, 26, 32)';
+  for (const [scheme, width, height] of [['dark', 1280, 900], ['light', 1280, 900], ['dark', 360, 740], ['light', 360, 740]]) {
+    const ctx = await newContext({ bypassCSP: true, colorScheme: scheme, viewport: { width, height } });
+    const where = `${scheme} ${width}px`;
     const axeRun = async (page, label) => {
       if (!(await page.evaluate(() => !!window.axe))) await page.addScriptTag({ content: AXE });
       const r = await page.evaluate(() => window.axe.run(document));
@@ -195,14 +203,17 @@ try {
     for (const p of PAGES) {
       const page = await ctx.newPage();
       await page.goto(BASE + p, { waitUntil: 'networkidle' });
-      await axeRun(page, p);
+      const look = await page.evaluate(() => ({ bg: getComputedStyle(document.body).backgroundColor, field: (() => { const i = document.querySelector('main input:not([type=hidden]):not([tabindex="-1"])'); return i ? getComputedStyle(i).backgroundColor : null; })() }));
+      if (look.bg !== GROUND) fail(`theme ${where} ${p}: page ground is ${look.bg}, want the site's ${GROUND} whatever the device theme`);
+      if (look.field && /^rgb\(255, 255, 255\)$/.test(look.field)) fail(`theme ${where} ${p}: a form field fell back to the browser's white`);
+      await axeRun(page, `${p} (${where})`);
       if (await page.locator('form[data-waitlist]').count()) {
         await page.click('form[data-waitlist] button[type=submit]');
-        await axeRun(page, `${p} (email error)`);
+        await axeRun(page, `${p} (email error, ${where})`);
         await page.fill('#waitlist-email', 'test@example.com');
         await page.click('form[data-waitlist] button[type=submit]');
         await page.click('[data-resend]');
-        await axeRun(page, `${p} (confirm step)`);
+        await axeRun(page, `${p} (confirm step, ${where})`);
       }
       await page.close();
     }
@@ -516,6 +527,12 @@ try {
       await ctx.close();
     }
 
+    // W-05(1): /how-mom-works/ is not published while the list is closed.
+    if (!OPEN) {
+      const res = await fetch(BASE + '/how-mom-works/');
+      if (res.status !== 404) fail(`closed: /how-mom-works/ answered ${res.status}, want 404 while the list is closed`);
+    }
+
     // invite-code-never-in-url (rule 72.3), and no token or email either.
     for (const u of urls) {
       const lower = decodeURIComponent(u).toLowerCase();
@@ -572,9 +589,35 @@ try {
 
       // Keyboard: first Tab lands on the skip link; every focus stop shows an outline
       // (for the switch, the outline sits on the radio's label).
+      // W-05(2): Tab visits every focusable element once, in reading (DOM) order, and
+      // nothing uses a positive tabindex to jump the order.
+      const order = await page.evaluate(() => {
+        const sel = 'a[href], button, input, select, textarea, [tabindex]';
+        const all = [...document.querySelectorAll(sel)].filter((el) => !el.disabled && el.tabIndex >= 0 && !el.closest('[hidden]') && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+        all.forEach((el, i) => { el.dataset.kb = String(i); });
+        return { n: all.length, positive: [...document.querySelectorAll('[tabindex]')].filter((el) => el.tabIndex > 0).length };
+      });
+      if (order.positive) fail(`${tag} ${p}: ${order.positive} element(s) with a positive tabindex`);
+      const visited = [];
+      for (let n = 0; n <= order.n; n++) {
+        await page.keyboard.press('Tab');
+        const k = await page.evaluate(() => document.activeElement?.dataset?.kb ?? null);
+        if (k === null || visited.includes(k)) break;
+        visited.push(k);
+      }
+      const want = Array.from({ length: order.n }, (_, i) => String(i));
+      if (visited.join() !== want.join()) fail(`${tag} ${p}: Tab order ${visited.join(',')} is not reading order ${want.join(',')}`);
+      // And the order matches what the eye reads: along one line, each stop sits right of the last.
+      const boxes = await page.evaluate(() => [...document.querySelectorAll('[data-kb]')].sort((a, b) => a.dataset.kb - b.dataset.kb)
+        .map((el) => { const r = el.getBoundingClientRect(); return { t: Math.round(r.top + window.scrollY), l: Math.round(r.left), name: (el.textContent || el.tagName).trim().slice(0, 24) }; }));
+      for (let i = 1; i < boxes.length; i++) {
+        const [a, b] = [boxes[i - 1], boxes[i]];
+        if (Math.abs(a.t - b.t) < 8 && b.l < a.l - 2) fail(`${tag} ${p}: Tab goes from "${a.name}" back left to "${b.name}" on the same line`);
+      }
+      await page.reload({ waitUntil: 'networkidle' }); // back to the top for the focus-ring walk
       await page.keyboard.press('Tab');
       if ((await page.evaluate(() => document.activeElement?.className)) !== 'skip') fail(`${tag} ${p}: first Tab is not the skip link`);
-      for (let n = 0; n < 20; n++) {
+      for (let n = 0; n < 40; n++) {
         const f = await page.evaluate(() => {
           const el = document.activeElement;
           if (!el || el === document.body) return null;
@@ -589,6 +632,12 @@ try {
 
       if (shots) await page.screenshot({ path: path.join(shots, `${tag}${p.replace(/\//g, '_') || '_'}.png`), fullPage: true });
 
+      if (p === '/how-mom-works/') {
+        const steps = (await page.locator('.loop-step h3').allTextContents()).map((t) => t.replace(/^Step \d: /, '').trim());
+        if (steps.join('|') !== 'Say it or snap it|MOM sends it to the right desk|The desk answers from what you already know|One line, then Go|Everything stays findable') fail(`${tag} /how-mom-works/: steps are ${steps.join(' | ')}`);
+        if ((await page.locator('.chat').count()) !== (await page.locator('.chat-tag').filter({ hasText: 'Example' }).count())) fail(`${tag} /how-mom-works/: an example is not labelled "Example"`);
+        if (await page.locator('main form, main input, main button').count()) fail(`${tag} /how-mom-works/: has a form control`);
+      }
       if (p === '/how/') {
         const titles = (await page.locator('.how-step h3').allTextContents()).map((t) => t.replace('Step 1: ', '').replace('Step 2: ', '').replace('Step 3: ', '').trim());
         if (titles.join('|') !== 'Tell MOM|MOM files it|You say Go') fail(`${tag} /how/: steps are ${titles.join(' | ')}`);
@@ -701,7 +750,7 @@ if (problems.length) {
   for (const p of problems) console.log('  ' + p);
   process.exit(1);
 }
-console.log(`OK [waitlist ${OPEN ? 'open: the form, on a test copy' : 'closed: as published'}]: ${PAGES.length} pages at 320, 390 and 1280 px; no switch; ${OPEN ? 'form steps' : 'closed line, nothing posted'}; redirect works; nothing left the site`);
+console.log(`OK [waitlist ${OPEN ? 'open: the form, on a test copy' : 'closed: as published'}]: ${PAGES.length} pages at 320, 360, 390 and 1280 px; no switch; ${OPEN ? 'form steps' : 'closed line, nothing posted'}; redirect works; nothing left the site`);
 console.log(`Weights (budget ${BUDGET / 1024} KB): ${weights.join(', ')}`);
 console.log(`axe-core: ${axeRuns.length} page states, no serious or critical issues${axeNotes.length ? '; notes: ' + axeNotes.join('; ') : ''}`);
 console.log(heroNote);
