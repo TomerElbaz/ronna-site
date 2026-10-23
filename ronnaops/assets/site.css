@@ -1,0 +1,37 @@
+/* ronnaops.com (CPO order W-06). Near-black ground, white text and a white action
+   colour. No green. Gold belongs to the MOM mark alone, so it is not used here. */
+@font-face { font-family: "Archivo"; src: url(/assets/fonts/archivo-latin-wdth-normal.woff2) format("woff2"); font-weight: 400 700; font-stretch: 100% 125%; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url(/assets/fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+:root {
+  color-scheme: dark;
+  --ground: #171A20; --ink: #FFFFFF; --dim: #A6AAB1; --line: #2A2D33; --edge: #6A707A;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--ground); color: var(--ink); }
+body { margin: 0; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; font: 17px/1.55 var(--display); -webkit-font-smoothing: antialiased; }
+a { color: var(--ink); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.skip { position: absolute; left: -999px; top: 0; background: var(--ink); color: var(--ground); padding: 8px 12px; }
+.skip:focus { left: 8px; top: 8px; z-index: 10; }
+.wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+.site-head { border-bottom: 1px solid var(--line); }
+.site-head .wrap { display: flex; align-items: center; min-height: 64px; }
+.wordmark { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font-weight: 700; font-stretch: 112%; font-size: 20px; letter-spacing: .01em; }
+.wordmark img { display: block; width: 32px; height: 32px; }
+main { flex: 1; display: flex; align-items: center; padding: 32px 0; }
+.stack > * + * { margin-top: 16px; }
+.tile { display: block; width: 104px; height: 104px; }
+h1 { margin: 24px 0 0; font-weight: 700; font-stretch: 112%; font-size: clamp(30px, 5.4vw, 52px); line-height: 1.08; letter-spacing: -.005em; max-width: 20ch; }
+.later { color: var(--dim); font-size: clamp(20px, 2.6vw, 26px); margin: 8px 0 0; }
+.lede { color: var(--dim); max-width: 46ch; margin: 20px 0 0; }
+.btn { display: inline-block; margin-top: 24px; background: var(--ink); color: var(--ground); font-weight: 700; text-decoration: none; padding: 13px 22px; border-radius: 3px; }
+.btn:hover { background: #E6E6E6; }
+.soon { font-family: var(--mono); font-size: 13px; letter-spacing: .06em; color: var(--dim); margin: 20px 0 0; }
+.site-foot { border-top: 1px solid var(--line); font-family: var(--mono); font-size: 13px; color: var(--dim); }
+.site-foot .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; padding-block: 18px; }
+.review { display: inline-block; border: 1px dashed var(--edge); padding: 4px 10px; font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.prose { max-width: 62ch; }
+.prose h2 { font-size: 20px; margin: 28px 0 0; }
+.prose p { color: var(--dim); margin: 8px 0 0; }

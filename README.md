@@ -233,6 +233,30 @@ over himself, never by email), `/family/leave {familyId}`, `/revoke
 {codeId}` or `{familyId, all: true}`, and `/delete {email}` for deletion
 requests that arrive by reply (by hand, within 7 days).
 
+## ronnaops.com (W-06)
+
+`ronnaops/` is the company site, ronnaops.com: one screen, kept apart from
+ronna.mom's `public/` so neither site's rules bend for the other (ronna.mom
+stays households only, with no mention of ronnaops.com). It has:
+
+- **Home:** mark A (the element tile: 27, R, ronna), "RonnaOps routes a household's
+  intelligence. And later, a business's.", the one approved line about MOM, one link,
+  **MOM for families** → https://ronna.mom, "Business: coming later.", and a Privacy link.
+- **Privacy:** a draft for Tomer, then counsel.
+- **Rules:** no form, no script, no prices, no gold (MOM's alone), no green, `noindex`,
+  and its own `_headers` (draft for CISO). Its fonts are copies of the site's own, with
+  their OFL texts. Mark A's glyphs are outlines.
+
+**To publish it** (Tomer, with IT; not this desk): a second Cloudflare Pages
+project on this repo with build output directory `ronnaops`, production
+branch `main`, no build command, previews off, and the custom domain
+`ronnaops.com`. The `/home` redirect and ronna.mom's DNS are also Tomer's
+clicks with IT.
+
+`npm test` runs `tests/check_ronnaops.py` and `tests/ronnaops_browser.mjs`:
+one screen at 1280, 1024 and 390 px, no sideways scroll at 360 px, axe in both
+device themes, Tab order, and nothing loaded from another host.
+
 ## Preview locally
 
 ```sh
